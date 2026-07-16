@@ -1,0 +1,23 @@
+{
+  "name": "nocodegit-tray",
+  "version": "1.1.0",
+  "private": true,
+  "main": "main.js",
+  "description": "NoCodeGit system tray — Save, Deploy, Report, project picker",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "tech.nocodegit.tray",
+    "productName": "NoCodeGit Tray",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "package.json"],
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"] }
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

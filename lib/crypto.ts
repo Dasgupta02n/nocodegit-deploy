@@ -1,0 +1,33 @@
+import crypto from "crypto";
+import { config } from "./config";
+
+const ALGO = "aes-256-gcm";
+
+function key(): Buffer {
+  return crypto.createHash("sha256").update(config.secret).digest();
+}
+
+/** Encrypt a secret string for at-rest storage (host tokens, API keys). */
+export function encrypt(plain: string): string {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ALGO, key(), iv);
+  const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString("base64url");
+}
+
+export function decrypt(payload: string): string {
+  const buf = Buffer.from(payload, "base64url");
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const data = buf.subarray(28);
+  const decipher = crypto.createDecipheriv(ALGO, key(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString(
+    "utf8"
+  );
+}
+
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}

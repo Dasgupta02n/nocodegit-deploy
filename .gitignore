@@ -1,7 +1,8 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
+node_modules/
 /node_modules
+tray/node_modules/
+tray/dist/
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,19 +24,26 @@
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env — never commit secrets
+.env
+.env.local
+.env*.local
+!.env.example
 
-# vercel
-.vercel
+# data (SQLite + snapshots — never commit user code)
+/data
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
 
 # typescript
-*.tsbuildinfo
 next-env.d.ts
+*.tsbuildinfo
+
