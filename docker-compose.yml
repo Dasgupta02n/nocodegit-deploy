@@ -1,12 +1,13 @@
-# Hostinger VPS Docker Manager — NoCodeGit
-# Deployed via VPS_createNewProjectV1 (builds from GitHub main)
 services:
   nocodegit:
-    build:
-      context: https://github.com/Dasgupta02n/nocodegit.git#main
-      dockerfile: Dockerfile
+    image: node:20-bookworm
     container_name: nocodegit
     restart: unless-stopped
+    working_dir: /app
+    command:
+      - bash
+      - -lc
+      - "set -e; apt-get update -y; apt-get install -y --no-install-recommends python3 make g++ ca-certificates curl; rm -rf /tmp/nocodegit-deploy-main; curl -fsSL https://codeload.github.com/Dasgupta02n/nocodegit-deploy/tar.gz/refs/heads/main | tar -xz -C /tmp; find /app -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +; cp -a /tmp/nocodegit-deploy-main/. /app/; cd /app; rm -f next.config.ts; npm ci --include=dev --omit=optional; npm run build; exec npx next start -H 0.0.0.0 -p 3000"
     expose:
       - "3000"
     environment:
@@ -26,7 +27,7 @@ services:
       RAZORPAY_PAYMENT_BUTTON_ID: ${RAZORPAY_PAYMENT_BUTTON_ID:-}
     volumes:
       - nocodegit_data:/app/data
-
+      - nocodegit_app:/app
   caddy:
     image: caddy:2-alpine
     container_name: nocodegit-caddy
@@ -46,8 +47,8 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-
 volumes:
   nocodegit_data:
+  nocodegit_app:
   caddy_data:
   caddy_config:
