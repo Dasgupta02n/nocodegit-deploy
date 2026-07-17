@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+data
+tray/node_modules
+tray/dist
+Tray Application
+ui-mockup
+*.md
+.env*
+!.env.example
+**/*.sqlite*
+**/*.tsbuildinfo

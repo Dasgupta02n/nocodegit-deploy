@@ -1,0 +1,53 @@
+# Hostinger VPS Docker Manager — NoCodeGit
+# Deployed via VPS_createNewProjectV1 (builds from GitHub main)
+services:
+  nocodegit:
+    build:
+      context: https://github.com/Dasgupta02n/nocodegit.git#main
+      dockerfile: Dockerfile
+    container_name: nocodegit
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://nocodegit.tech}
+      NOCODEGIT_SECRET: ${NOCODEGIT_SECRET}
+      NOCODEGIT_DATA_DIR: /app/data
+      NOCODEGIT_DATABASE_PATH: /app/data/nocodegit.sqlite
+      NOCODEGIT_STORAGE_PATH: /app/data/snapshots
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-NoCodeGit <noreply@nocodegit.tech>}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_PLAN_PRO: ${RAZORPAY_PLAN_PRO:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      RAZORPAY_PAYMENT_BUTTON_ID: ${RAZORPAY_PAYMENT_BUTTON_ID:-}
+    volumes:
+      - nocodegit_data:/app/data
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: nocodegit-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - caddy
+      - reverse-proxy
+      - --from
+      - nocodegit.tech
+      - --to
+      - nocodegit:3000
+    depends_on:
+      - nocodegit
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  nocodegit_data:
+  caddy_data:
+  caddy_config:
