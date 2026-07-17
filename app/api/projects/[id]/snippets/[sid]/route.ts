@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string; sid: string }> };
 
 function requirePaid(user: { plan?: string }) {
   if (!isPaidPlan(user.plan)) {
-    return error("Ads & affiliate editor is Pro only ($5/mo)", 403);
+    return error("Ads & affiliate editor is Pro only (₹500/mo)", 403);
   }
   return null;
 }

@@ -22,6 +22,8 @@ type Props = {
     canDeploy: boolean;
   };
   dashboardUrl?: string | null;
+  hostingLabel?: string | null;
+  envCount?: number;
   children: React.ReactNode;
 };
 
@@ -29,6 +31,8 @@ export function ProjectChrome({
   project,
   readiness,
   dashboardUrl,
+  hostingLabel,
+  envCount,
   children,
 }: Props) {
   const pathname = usePathname() || "";
@@ -49,7 +53,7 @@ export function ProjectChrome({
     },
     {
       href: `${base}/deploy`,
-      label: "Deploy history",
+      label: "Deploys",
       match: (p: string) =>
         p.startsWith(`${base}/deploy`) || p.startsWith(`${base}/logs`),
     },
@@ -74,7 +78,7 @@ export function ProjectChrome({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      setMsg("Saved to NoCodeGit storage.");
+      setMsg("Version saved to NoCodeGit.");
       router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Upload failed");
@@ -83,7 +87,7 @@ export function ProjectChrome({
     }
   }
 
-  async function deploy() {
+  async function ship() {
     if (!readiness.canDeploy) {
       setErr("Need at least one save and a hosting connection.");
       return;
@@ -98,16 +102,17 @@ export function ProjectChrome({
         body: JSON.stringify({ async: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Deploy failed");
+      if (!res.ok) throw new Error(data.error || "Ship failed");
       if (data.deploy?.id) {
         setLiveDeployId(data.deploy.id);
-        setMsg("Deploy started — live progress below.");
+        setMsg("Ship started — live progress below.");
+        router.push(`${base}/deploy`);
       } else {
         router.push(`${base}/deploy`);
       }
       router.refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Deploy failed");
+      setErr(e instanceof Error ? e.message : "Ship failed");
     } finally {
       setBusy(false);
     }
@@ -115,148 +120,224 @@ export function ProjectChrome({
 
   async function copyErrorReport() {
     try {
-      const text = `My NoCodeGit deploy to my hosting provider failed. Fix the project so production deploy works.\n\nProject: ${project.name}\nOpen Deploy history in NoCodeGit for the full log.`;
+      const text = `My NoCodeGit deploy to my hosting provider failed. Fix the project so production deploy works.\n\nProject: ${project.name}\nOpen Deploys in NoCodeGit for the full log.`;
       await navigator.clipboard.writeText(text);
-      setMsg("Error report template copied — open Deploy history for the full log.");
+      setMsg("Error report template copied — open Deploys for the full log.");
     } catch {
       setErr("Could not copy report");
     }
   }
 
-  const strip = [
-    { k: "Hosting", ok: readiness.hosting },
-    { k: "Database", ok: readiness.database },
-    { k: "Environment", ok: readiness.environment },
-    { k: "Snippets", ok: readiness.snippets },
-    { k: "Domain", ok: readiness.domain },
+  const chips: {
+    label: string;
+    ok: boolean;
+    warn?: boolean;
+  }[] = [
+    { label: "Code saved", ok: readiness.code },
+    {
+      label: readiness.hosting
+        ? `Hosting · ${hostingLabel || "connected"}`
+        : "Hosting",
+      ok: readiness.hosting,
+    },
+    {
+      label:
+        typeof envCount === "number"
+          ? `Env · ${envCount} key${envCount === 1 ? "" : "s"}`
+          : "Environment",
+      ok: readiness.environment,
+    },
+    {
+      label: readiness.domain ? "Domain · set" : "Domain · not set",
+      ok: readiness.domain,
+      warn: !readiness.domain,
+    },
+    {
+      label: readiness.canDeploy ? "Ready to ship" : "Not ready",
+      ok: readiness.canDeploy,
+    },
   ];
 
   return (
-    <div>
-      <div className="mb-2 text-sm text-[var(--muted)]">
-        <Link href="/app" className="hover:text-[var(--ink)]">
-          Projects
-        </Link>
-        <span> / </span>
-        <span className="text-[var(--ink)]">{project.name}</span>
-      </div>
+    <div className="project-chrome">
+      <aside className="project-sidenav">
+        <div className="project-sidenav-label">Project</div>
+        <div className="project-sidenav-name" title={project.name}>
+          {project.name}
+        </div>
+        <nav className="flex flex-col gap-0.5">
+          {nav.map((n) => {
+            const on = n.match(pathname);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={`project-nav-item ${on ? "active" : ""}`}
+              >
+                <span className="project-nav-dot" />
+                {n.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="mt-auto hidden pt-6 md:block">
+          <Link
+            href="/download"
+            className="block rounded-xl border border-dashed border-[var(--clay)] bg-white/80 px-3 py-3 text-center text-[11px] font-semibold leading-snug text-[var(--muted)] hover:border-[var(--teal)] hover:text-[var(--teal)]"
+          >
+            Download tray
+            <span className="mt-0.5 block font-normal text-[var(--faint)]">
+              Save & ship from desktop
+            </span>
+          </Link>
+        </div>
+      </aside>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+      <div className="project-main">
+        <p className="mb-3 text-sm text-[var(--faint)]">
+          <Link href="/app" className="hover:text-[var(--ink)]">
+            Projects
+          </Link>
+          <span> / </span>
+          <span className="font-medium text-[var(--muted)]">{project.name}</span>
+        </p>
+
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl tracking-tight text-[var(--ink)] md:text-4xl">
               {project.name}
             </h1>
-            {project.live_url ? (
-              <a
-                href={project.live_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-[var(--teal)]"
-              >
-                <span className="h-2 w-2 rounded-full bg-[var(--success)]" />
-                {project.live_url}
-                <span className="badge badge-live">LIVE</span>
-              </a>
-            ) : (
-              <span className="badge badge-muted">Not live yet</span>
-            )}
-            {dashboardUrl && (
-              <a
-                href={dashboardUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="badge badge-teal"
-              >
-                Provider dashboard ↗
-              </a>
-            )}
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--muted)]">
+              {project.live_url ? (
+                <>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-[var(--success)]" />
+                    Live
+                  </span>
+                  <span className="text-[var(--faint)]">·</span>
+                  <a
+                    href={project.live_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-[var(--teal)] hover:underline"
+                  >
+                    {project.live_url.replace(/^https?:\/\//, "")}
+                  </a>
+                </>
+              ) : (
+                <span className="badge badge-muted">Not live yet</span>
+              )}
+              {dashboardUrl && (
+                <>
+                  <span className="text-[var(--faint)]">·</span>
+                  <a
+                    href={dashboardUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-[var(--teal)] hover:underline"
+                  >
+                    Provider dashboard ↗
+                  </a>
+                </>
+              )}
+            </p>
           </div>
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            Ship readiness:{" "}
-            {strip.map((s, i) => (
-              <span key={s.k}>
-                {i > 0 && " · "}
-                {s.k} {s.ok ? "✓" : "○"}
-              </span>
-            ))}
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="btn-secondary cursor-pointer">
+              <input
+                type="file"
+                accept=".zip,application/zip"
+                className="hidden"
+                disabled={busy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadSave(f);
+                }}
+              />
+              Save version
+            </label>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy || !readiness.canDeploy}
+              onClick={() => void ship()}
+              title={
+                readiness.canDeploy
+                  ? "Ship latest save to your host"
+                  : "Need a save + hosting connection"
+              }
+            >
+              {busy ? "Working…" : "Ship →"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => void copyErrorReport()}
+            >
+              Report error
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <label className="btn-ink cursor-pointer">
-            <input
-              type="file"
-              accept=".zip,application/zip"
-              className="hidden"
-              disabled={busy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void uploadSave(f);
-              }}
-            />
-            Save
-          </label>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={busy || !readiness.canDeploy}
-            onClick={() => void deploy()}
-          >
-            Deploy
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => void copyErrorReport()}
-          >
-            Report error
-          </button>
-        </div>
-      </div>
-
-      {(msg || err) && (
-        <div
-          className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-            err
-              ? "bg-[var(--danger-soft)] text-[var(--danger)]"
-              : "bg-[var(--teal-soft)] text-[var(--teal)]"
-          }`}
-        >
-          {err || msg}
-        </div>
-      )}
-
-      <nav className="mt-6 flex flex-wrap gap-1 border-b border-[var(--line)]">
-        {nav.map((n) => {
-          const on = n.match(pathname);
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`border-b-2 px-4 py-2.5 text-sm font-medium ${
-                on
-                  ? "border-[var(--teal)] text-[var(--teal)]"
-                  : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
+        <div className="status-strip mt-5">
+          {chips.map((c) => (
+            <span
+              key={c.label}
+              className={`status-chip ${
+                c.ok ? "ok" : c.warn ? "warn" : "bad"
               }`}
             >
-              {n.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {liveDeployId && (
-        <div className="mt-6">
-          <LiveDeployPanel
-            projectId={project.id}
-            deployId={liveDeployId}
-            onDone={() => router.refresh()}
-          />
+              <span className="status-chip-dot" />
+              {c.label}
+            </span>
+          ))}
         </div>
-      )}
 
-      <div className="mt-8">{children}</div>
+        {(msg || err) && (
+          <div
+            className={`mt-4 rounded-xl px-4 py-3 text-sm ${
+              err
+                ? "bg-[var(--danger-soft)] text-[var(--danger)]"
+                : "bg-[var(--teal-soft)] text-[var(--teal)]"
+            }`}
+          >
+            {err || msg}
+          </div>
+        )}
+
+        {/* Mobile project nav */}
+        <nav className="mt-5 flex gap-1 overflow-x-auto border-b border-[var(--line)] pb-px md:hidden">
+          {nav.map((n) => {
+            const on = n.match(pathname);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium ${
+                  on
+                    ? "border-[var(--teal)] text-[var(--teal)]"
+                    : "border-transparent text-[var(--muted)]"
+                }`}
+              >
+                {n.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {liveDeployId && (
+          <div className="mt-6">
+            <LiveDeployPanel
+              projectId={project.id}
+              deployId={liveDeployId}
+              onDone={() => router.refresh()}
+            />
+          </div>
+        )}
+
+        <div className="mt-6 md:mt-8">{children}</div>
+      </div>
     </div>
   );
 }

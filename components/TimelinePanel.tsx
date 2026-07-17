@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PreSaveChecklist } from "@/components/PreSaveChecklist";
@@ -11,9 +12,27 @@ type Save = {
   created_at: string;
 };
 
+type LastDeploy = {
+  id: string;
+  status: string;
+  live_url: string | null;
+  created_at: string;
+} | null;
+
 function formatBytes(n: number) {
   if (n >= 1024 * 1024) return `${Math.round(n / (1024 * 1024))} MB`;
   return `${Math.round(n / 1024)} KB`;
+}
+
+function relativeTime(iso: string) {
+  const t = new Date(iso).getTime();
+  const d = Date.now() - t;
+  const m = Math.floor(d / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 export function TimelinePanel({
@@ -21,11 +40,13 @@ export function TimelinePanel({
   initialSaves,
   uploadLimitLabel,
   canDeploy,
+  lastDeploy,
 }: {
   projectId: string;
   initialSaves: Save[];
   uploadLimitLabel: string;
   canDeploy: boolean;
+  lastDeploy?: LastDeploy;
 }) {
   const router = useRouter();
   const [saves, setSaves] = useState(initialSaves);
@@ -51,7 +72,7 @@ export function TimelinePanel({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setSaves((s) => [data.save, ...s]);
-      setMsg("Saved.");
+      setMsg("Version saved.");
       router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed");
@@ -67,14 +88,14 @@ export function TimelinePanel({
       const res = await fetch(`/api/projects/${projectId}/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ save_id: saveId }),
+        body: JSON.stringify({ save_id: saveId, async: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Deploy failed");
+      if (!res.ok) throw new Error(data.error || "Ship failed");
       setMsg(
         data.deploy?.status === "success"
-          ? "Deploy succeeded."
-          : "Deploy finished with errors."
+          ? "Ship succeeded."
+          : "Ship started — see Deploys for logs."
       );
       router.push(`/app/${projectId}/deploy`);
       router.refresh();
@@ -86,7 +107,7 @@ export function TimelinePanel({
   }
 
   async function rename(sid: string, current: string | null) {
-    const next = window.prompt("Rename save", current || "Project save");
+    const next = window.prompt("Rename version", current || "Project save");
     if (next === null) return;
     const label = next.trim();
     if (!label) {
@@ -101,8 +122,7 @@ export function TimelinePanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ label }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Rename failed");
+      if (!res.ok) throw new Error((await res.json()).error || "Rename failed");
       setSaves((list) =>
         list.map((s) => (s.id === sid ? { ...s, label } : s))
       );
@@ -137,7 +157,7 @@ export function TimelinePanel({
   }
 
   async function remove(sid: string) {
-    if (!confirm("Delete this save?")) return;
+    if (!confirm("Delete this version?")) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/saves/${sid}`, {
@@ -154,85 +174,92 @@ export function TimelinePanel({
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Project Timeline</h2>
-          <p className="text-sm text-[var(--teal)]">Version History</p>
-        </div>
-        <label className="btn-secondary cursor-pointer text-sm">
-          <input
-            type="file"
-            accept=".zip,application/zip"
-            className="hidden"
-            disabled={busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void upload(f);
-            }}
-          />
-          + New save
-        </label>
-      </div>
+    <div className="space-y-4">
+      {msg && (
+        <p className="rounded-xl bg-[var(--teal-soft)] px-4 py-3 text-sm text-[var(--teal)]">
+          {msg}
+        </p>
+      )}
+      {err && (
+        <p className="rounded-xl bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
+          {err}
+        </p>
+      )}
 
-      {msg && <p className="mb-4 text-sm text-[var(--teal)]">{msg}</p>}
-      {err && <p className="mb-4 text-sm text-[var(--danger)]">{err}</p>}
-
-      <div className="mb-6">
+      <div className="mb-2">
         <PreSaveChecklist projectId={projectId} compact={saves.length > 0} />
       </div>
 
-      {saves.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            No saves yet. Click <strong>Save</strong> and upload a ZIP of your
-            project (stored on NoCodeGit).
-          </p>
-          <label className="dropzone mt-6 inline-block w-full max-w-md cursor-pointer">
-            <input
-              type="file"
-              accept=".zip,application/zip"
-              className="hidden"
-              disabled={busy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void upload(f);
-              }}
-            />
-            <div className="text-sm font-medium text-[var(--teal)]">
-              Drag ZIP here or Browse
-            </div>
-            <div className="mt-2 text-xs text-[var(--faint)]">
-              Limit {uploadLimitLabel}
-            </div>
-          </label>
+      <div className="panel">
+        <div className="panel-h">
+          <h2>Versions</h2>
+          <span className="meta">Restore points · no Git</span>
         </div>
-      ) : (
-        <div className="timeline max-w-2xl">
-          {saves.map((s, i) => (
-            <div key={s.id} className="timeline-item">
-              <div className="timeline-card">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                      <span>
-                        {new Date(s.created_at).toLocaleString()} — Save
+
+        {saves.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="text-sm text-[var(--muted)]">
+              No versions yet. Upload a ZIP of your project (stored on
+              NoCodeGit).
+            </p>
+            <label className="dropzone mt-6 inline-block w-full max-w-md cursor-pointer">
+              <input
+                type="file"
+                accept=".zip,application/zip"
+                className="hidden"
+                disabled={busy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void upload(f);
+                }}
+              />
+              <div className="text-sm font-medium text-[var(--teal)]">
+                Drag ZIP here or browse
+              </div>
+              <div className="mt-2 text-xs text-[var(--faint)]">
+                Limit {uploadLimitLabel}
+              </div>
+            </label>
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--line)]">
+            {saves.map((s, i) => {
+              const latest = i === 0;
+              return (
+                <li
+                  key={s.id}
+                  className={`grid grid-cols-[28px_1fr_auto] items-start gap-3 px-4 py-4 sm:px-5 ${
+                    latest ? "bg-gradient-to-r from-[var(--teal-soft)]/80 to-transparent" : ""
+                  }`}
+                >
+                  <div className="flex flex-col items-center pt-1">
+                    <span
+                      className={`h-3 w-3 rounded-full border-2 border-[var(--teal)] ${
+                        latest ? "bg-[var(--teal)]" : "bg-white"
+                      }`}
+                    />
+                    {i < saves.length - 1 && (
+                      <span className="mt-1 min-h-[1.5rem] w-0.5 flex-1 bg-[var(--line)]" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-[var(--ink)]">
+                        {s.label || "Project save"}
                       </span>
-                      {i === 0 && (
+                      {latest && (
                         <span className="badge badge-teal">Latest</span>
                       )}
                     </div>
-                    <div className="mt-1 font-semibold">
-                      {s.label || "Project save"}
-                    </div>
                     <div className="mt-1 text-xs text-[var(--faint)]">
-                      {formatBytes(s.size_bytes)}
+                      {relativeTime(s.created_at)} · {formatBytes(s.size_bytes)}{" "}
+                      · {new Date(s.created_at).toLocaleString()}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-end gap-1.5">
                     <button
                       type="button"
-                      className="btn-secondary !py-1.5 !text-xs"
+                      className="btn-ghost !px-2.5 !py-1.5 !text-xs"
                       disabled={busy}
                       onClick={() => void loadPreview(s.id)}
                     >
@@ -240,15 +267,15 @@ export function TimelinePanel({
                     </button>
                     <button
                       type="button"
-                      className="btn-primary !py-1.5 !text-xs"
+                      className="btn-secondary !px-2.5 !py-1.5 !text-xs"
                       disabled={busy || !canDeploy}
                       onClick={() => void deploy(s.id)}
                     >
-                      Deploy this
+                      Ship this
                     </button>
                     <button
                       type="button"
-                      className="btn-secondary !py-1.5 !text-xs"
+                      className="btn-ghost !px-2.5 !py-1.5 !text-xs"
                       disabled={busy}
                       onClick={() => void rename(s.id, s.label)}
                     >
@@ -256,7 +283,7 @@ export function TimelinePanel({
                     </button>
                     <button
                       type="button"
-                      className="btn-secondary !py-1.5 !text-xs"
+                      className="btn-ghost !px-2.5 !py-1.5 !text-xs"
                       disabled={busy}
                       onClick={() => download(s.id)}
                     >
@@ -264,16 +291,55 @@ export function TimelinePanel({
                     </button>
                     <button
                       type="button"
-                      className="btn-ghost !py-1.5 !text-xs text-[var(--danger)]"
+                      className="btn-ghost !px-2.5 !py-1.5 !text-xs text-[var(--danger)]"
                       onClick={() => void remove(s.id)}
                     >
                       Delete
                     </button>
                   </div>
-                </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {lastDeploy && (
+        <div className="panel">
+          <div className="panel-h">
+            <h2>Last deploy</h2>
+            <span
+              className={
+                lastDeploy.status === "success"
+                  ? "badge badge-live"
+                  : lastDeploy.status === "running" ||
+                      lastDeploy.status === "pending"
+                    ? "badge badge-teal"
+                    : "badge badge-muted"
+              }
+            >
+              {lastDeploy.status}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <div className="text-sm font-semibold">
+                {lastDeploy.status === "success"
+                  ? "Deployed successfully"
+                  : `Deploy ${lastDeploy.status}`}
+              </div>
+              <div className="mt-1 text-xs text-[var(--faint)]">
+                {new Date(lastDeploy.created_at).toLocaleString()}
+                {lastDeploy.live_url ? ` · ${lastDeploy.live_url}` : ""}
               </div>
             </div>
-          ))}
+            <Link
+              href={`/app/${projectId}/deploy`}
+              className="btn-secondary !text-sm"
+            >
+              View logs
+            </Link>
+          </div>
         </div>
       )}
 
@@ -292,7 +358,7 @@ export function TimelinePanel({
             </div>
             <div className="max-h-[60vh] overflow-auto p-5">
               <p className="mb-3 text-xs text-[var(--muted)]">
-                Files in this save (restore = download zip, then open locally).
+                Files in this save (restore = download zip).
               </p>
               <ul className="space-y-1 font-mono text-xs text-[var(--ink)]">
                 {preview.entries.map((e) => (

@@ -54,8 +54,8 @@ export const PLANS = {
   pro: {
     id: "pro",
     name: "Pro",
-    priceLabel: "₹399/mo",
-    priceUsd: 5,
+    priceLabel: "₹500/mo",
+    priceUsd: 0,
     projects: config.maxProjectsPaid,
     maxUpload: "Unlimited",
     adsEditor: true,

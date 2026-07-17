@@ -11,7 +11,7 @@ type Ctx = { params: Promise<{ id: string }> };
 function requirePaid(user: { plan?: string }) {
   if (!isPaidPlan(user.plan)) {
     return error(
-      "Ads & affiliate editor is a Pro feature ($5/mo). Free users can still deploy code that already contains ads/links.",
+      "Ads & affiliate editor is a Pro feature (₹500/mo). Free users can still deploy code that already contains ads/links.",
       403
     );
   }

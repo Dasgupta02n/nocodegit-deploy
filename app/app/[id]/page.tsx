@@ -20,6 +20,9 @@ export default async function ProjectTimelinePage({ params }: Props) {
   const dashboardUrl = bundle.hosting
     ? providerDashboardUrl(bundle.hosting.provider, bundle.hosting.target_json)
     : null;
+  const hostingLabel = bundle.hosting
+    ? bundle.hosting.display_name || bundle.hosting.provider
+    : null;
 
   return (
     <AppShell email={user.email}>
@@ -28,12 +31,15 @@ export default async function ProjectTimelinePage({ params }: Props) {
         project={bundle.project}
         readiness={readiness}
         dashboardUrl={dashboardUrl}
+        hostingLabel={hostingLabel}
+        envCount={bundle.env?.length ?? 0}
       >
         <TimelinePanel
           projectId={id}
           initialSaves={bundle.saves}
           uploadLimitLabel={formatBytes(maxSnapshotBytesForPlan(user.plan))}
           canDeploy={readiness.canDeploy}
+          lastDeploy={bundle.deploys[0] || null}
         />
       </ProjectChrome>
     </AppShell>

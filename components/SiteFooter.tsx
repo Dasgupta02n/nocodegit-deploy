@@ -26,8 +26,16 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/download" className="hover:text-[var(--teal)]">
-                  Download
+                  Download tray
                 </Link>
+              </li>
+              <li>
+                <a
+                  href="/downloads/NoCodeGit-Tray-win-x64.exe"
+                  className="hover:text-[var(--teal)]"
+                >
+                  Windows portable
+                </a>
               </li>
               <li>
                 <Link href="/onboarding" className="hover:text-[var(--teal)]">
@@ -83,7 +91,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-[var(--line)] py-4 text-center text-xs text-[var(--faint)]">
         © {new Date().getFullYear()} NoCodeGit · nocodegit.tech · Free 300 MB ·
-        Pro $5/mo
+        Pro ₹500/mo
       </div>
     </footer>
   );

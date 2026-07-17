@@ -18,7 +18,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
   if (!isPaidPlan(user.plan)) {
-    return error("Ads & affiliate editor is Pro only ($5/mo)", 403);
+    return error("Ads & affiliate editor is Pro only (₹500/mo)", 403);
   }
   const { id, aid } = await ctx.params;
   if (!getProjectForUser(id, user.id)) return error("Not found", 404);
@@ -65,7 +65,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
   if (!isPaidPlan(user.plan)) {
-    return error("Ads & affiliate editor is Pro only ($5/mo)", 403);
+    return error("Ads & affiliate editor is Pro only (₹500/mo)", 403);
   }
   const { id, aid } = await ctx.params;
   if (!getProjectForUser(id, user.id)) return error("Not found", 404);

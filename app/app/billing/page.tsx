@@ -42,6 +42,8 @@ export default async function BillingPage({
       )}
       <BillingClient
         razorpayEnabled={config.razorpayEnabled}
+        paymentButtonId={config.razorpayPaymentButtonId}
+        subscriptionEnabled={config.razorpaySubscriptionEnabled}
         currentPlan={user.plan || "free"}
         plans={Object.values(PLANS)}
       />

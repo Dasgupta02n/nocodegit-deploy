@@ -45,7 +45,7 @@ export function SettingsSnippets({
           Ads, scripts, and affiliate link replace-on-deploy are a Pro feature.
         </p>
         <Link href="/app/billing" className="btn-primary mt-4 inline-flex">
-          Upgrade — $5/mo
+          Upgrade — ₹500/mo
         </Link>
       </div>
     );

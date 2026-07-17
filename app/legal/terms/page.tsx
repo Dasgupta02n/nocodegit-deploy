@@ -23,7 +23,7 @@ export default function TermsPage() {
           affiliates, and third-party API usage.
         </p>
         <p>
-          Free plan limits (including 300 MB saves) and Pro features ($5/mo
+          Free plan limits (including 300 MB saves) and Pro features (₹500/mo
           unlimited size and ads editor) are described on the site and may
           change with notice.
         </p>

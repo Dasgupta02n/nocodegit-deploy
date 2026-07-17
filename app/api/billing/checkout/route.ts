@@ -12,9 +12,9 @@ export async function POST() {
   const user = await getSessionUser();
   if (!user) return unauthorized();
   const rzp = getRazorpay();
-  if (!rzp || !config.razorpayEnabled) {
+  if (!rzp || !config.razorpaySubscriptionEnabled) {
     return error(
-      "Razorpay is not configured. Set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_PLAN_PRO.",
+      "Razorpay subscription API is not configured. Set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_PLAN_PRO — or use the Payment Button on /app/billing.",
       503
     );
   }

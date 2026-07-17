@@ -29,7 +29,7 @@ export default function DocsPage() {
               <tr className="border-b border-[var(--line)] text-[var(--faint)]">
                 <th className="py-2 pr-4 font-medium">Feature</th>
                 <th className="py-2 pr-4 font-medium">Free</th>
-                <th className="py-2 font-medium">Pro $5</th>
+                <th className="py-2 font-medium">Pro ₹500</th>
               </tr>
             </thead>
             <tbody className="text-[var(--muted)]">

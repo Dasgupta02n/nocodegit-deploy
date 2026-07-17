@@ -2,7 +2,7 @@
   "name": "nocodegit",
   "version": "1.1.0",
   "private": true,
-  "description": "NoCodeGit (nocodegit.tech) — Save. Ship. Still. Version vault + deploy to your host. Free 300MB; Pro $5/mo unlimited + ads editor.",
+  "description": "NoCodeGit (nocodegit.tech) — Save. Ship. Still. Version vault + deploy to your host. Free 300MB; Pro ₹500/mo unlimited + ads editor.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

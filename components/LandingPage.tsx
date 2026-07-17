@@ -4,14 +4,15 @@ import Link from "next/link";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
 import { PierIcon } from "./BrandLogo";
+import { TrayDownloadBanner } from "./TrayDownloadBanner";
 
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-[var(--paper)]">
       <SiteHeader />
 
-      {/* Hero — Quay mockup: display wordmark + pier line + clay CTA */}
-      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-20 pt-16 md:pt-24">
+      {/* Hero */}
+      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-16 pt-16 md:pb-20 md:pt-24">
         <div className="pointer-events-none absolute right-0 top-8 hidden w-[48%] opacity-70 md:block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -36,11 +37,19 @@ export function LandingPage() {
             <Link href="/signup" className="btn-clay btn-lg">
               Get started →
             </Link>
+            <a
+              href="/downloads/NoCodeGit-Tray-win-x64.exe"
+              className="btn-primary btn-lg"
+            >
+              Download tray
+            </a>
             <Link href="/download" className="btn-secondary btn-lg">
-              Download for desktop
+              Tray setup
             </Link>
           </div>
-          <p className="mt-3 text-xs text-[var(--faint)]">macOS · Windows</p>
+          <p className="mt-3 text-xs text-[var(--faint)]">
+            Windows x64 portable · Free 300 MB · Pro ₹500/mo
+          </p>
         </div>
 
         <div className="relative z-10 mt-16 md:hidden">
@@ -48,8 +57,15 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Three steps — calm cards like brand board */}
-      <section className="border-t border-[var(--line)] bg-[#faf8f5] px-6 py-16">
+      {/* Prominent tray download */}
+      <section className="border-t border-[var(--line)] bg-[#faf8f5] px-6 py-14">
+        <div className="mx-auto max-w-5xl">
+          <TrayDownloadBanner />
+        </div>
+      </section>
+
+      {/* Three steps */}
+      <section className="px-6 py-16">
         <div className="mx-auto max-w-5xl">
           <p className="section-eyebrow">How it works</p>
           <h2 className="mt-2 font-display text-3xl text-[var(--ink)] md:text-4xl">
@@ -69,7 +85,7 @@ export function LandingPage() {
               },
               {
                 t: "Ship",
-                d: "One Deploy. We package and send to your host. Report errors back to your vibe tool.",
+                d: "One Ship. We package and send to your host. Report errors back to your vibe tool.",
                 n: "03",
               },
             ].map((c) => (
@@ -91,8 +107,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Brand metrics strip */}
-      <section className="mx-auto grid max-w-5xl gap-5 px-6 py-16 md:grid-cols-3">
+      {/* Brand metrics */}
+      <section className="mx-auto grid max-w-5xl gap-5 px-6 pb-16 md:grid-cols-3">
         <div className="card p-6">
           <div className="text-sm font-semibold text-[var(--teal)]">Free</div>
           <div className="mt-2 text-2xl font-semibold tracking-tight">
@@ -104,7 +120,9 @@ export function LandingPage() {
         </div>
         <div className="card p-6">
           <div className="text-sm font-semibold text-[var(--teal)]">Pro</div>
-          <div className="mt-2 text-2xl font-semibold tracking-tight">$5/mo</div>
+          <div className="mt-2 text-2xl font-semibold tracking-tight">
+            ₹500/mo
+          </div>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Unlimited size. Ads & affiliate editor.
           </p>
@@ -134,6 +152,12 @@ export function LandingPage() {
             <Link href="/signup" className="btn-primary btn-lg">
               Get started →
             </Link>
+            <a
+              href="/downloads/NoCodeGit-Tray-win-x64.exe"
+              className="btn-clay btn-lg"
+            >
+              Download tray
+            </a>
             <Link href="/docs" className="btn-secondary btn-lg">
               Read the docs
             </Link>

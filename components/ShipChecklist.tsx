@@ -22,67 +22,65 @@ export function ShipChecklist({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
 
   const steps = [
     {
-      n: 1,
       title: "Code saved",
       ok: readiness.code,
       href: `/app/${projectId}`,
-      hint: "≥1 snapshot stored on NoCodeGit",
+      hint: "At least one version on NoCodeGit",
     },
     {
-      n: 2,
       title: "Hosting connected",
       ok: readiness.hosting,
       href: `/app/${projectId}/settings/hosting`,
-      hint: "Provider + credentials (Settings → Hosting)",
+      hint: "Provider + credentials",
     },
     {
-      n: 3,
       title: "Database",
       ok: readiness.database,
       href: `/app/${projectId}/settings/database`,
-      hint: "None or details saved",
+      hint: "None or connection saved",
     },
     {
-      n: 4,
       title: "Environment",
       ok: readiness.environment,
       href: `/app/${projectId}/settings/environment`,
       hint: "Optional keys for your host",
     },
     {
-      n: 5,
       title: "Snippets",
       ok: readiness.snippets,
       href: `/app/${projectId}/settings/snippets`,
-      hint: "Optional ads / affiliates",
+      hint: "Optional ads / affiliates (Pro)",
     },
     {
-      n: 6,
-      title: "Domain / Live URL",
+      title: "Domain / live URL",
       ok: readiness.domain,
       href: `/app/${projectId}/settings/domain`,
-      hint: "Record URL (warn if empty)",
+      hint: "Optional — set when you have a custom domain",
+      optional: true,
     },
   ];
 
-  async function deploy() {
+  async function ship() {
     if (!readiness.canDeploy) {
-      setErr("Deploy needs a save and a hosting connection.");
+      setErr("Ship needs a save and a hosting connection.");
       return;
     }
     setBusy(true);
     setErr("");
+    setMsg("");
     try {
       const res = await fetch(`/api/projects/${projectId}/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ async: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Deploy failed");
+      if (!res.ok) throw new Error(data.error || "Ship failed");
+      setMsg("Ship started.");
       router.push(`/app/${projectId}/deploy`);
       router.refresh();
     } catch (e) {
@@ -92,50 +90,88 @@ export function ShipChecklist({
     }
   }
 
-  return (
-    <div className="max-w-xl">
-      <h2 className="text-lg font-semibold">Ship checklist</h2>
-      <p className="mt-1 text-sm text-[var(--muted)]">
-        Deploy is blocked without save + hosting connection.
-      </p>
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(
+        `NoCodeGit ship report\nProject: ${projectId}\nTime: ${new Date().toISOString()}\n\nPaste latest deploy log from Deploys into your vibe tool.\n\nChecklist:\n- App listens on PORT if required\n- Env keys set in NoCodeGit Environment\n- Hosting connected\n- Snippet markers if using Pro ads`
+      );
+      setMsg("Report template copied.");
+    } catch {
+      setErr("Could not copy");
+    }
+  }
 
-      <ol className="mt-6 space-y-3">
-        {steps.map((s) => (
-          <li key={s.n}>
-            <Link
-              href={s.href}
-              className="card flex items-start gap-3 p-4 transition hover:border-[var(--teal)]"
+  return (
+    <div className="space-y-4">
+      <div className="panel">
+        <div className="panel-h">
+          <h2>Ship readiness</h2>
+          <span className="meta">Fix gaps, then ship</span>
+        </div>
+        <ul className="divide-y divide-[var(--line)]">
+          {steps.map((s) => (
+            <li
+              key={s.title}
+              className="flex items-center gap-3 px-4 py-3.5 sm:px-5"
             >
               <span
-                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
                   s.ok
-                    ? "bg-[var(--teal)] text-white"
-                    : "bg-[var(--paper)] text-[var(--faint)] ring-1 ring-[var(--line)]"
+                    ? "bg-[var(--success-soft)] text-[var(--success)]"
+                    : s.optional
+                      ? "bg-[#fffaeb] text-[#b54708]"
+                      : "bg-[var(--danger-soft)] text-[var(--danger)]"
                 }`}
               >
-                {s.ok ? "✓" : s.n}
+                {s.ok ? "✓" : "!"}
               </span>
-              <div>
-                <div className="font-semibold">{s.title}</div>
-                <div className="text-xs text-[var(--muted)]">{s.hint}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold">{s.title}</div>
+                <div className="text-xs text-[var(--faint)]">{s.hint}</div>
               </div>
-            </Link>
-          </li>
-        ))}
-      </ol>
+              <Link
+                href={s.href}
+                className={
+                  s.ok
+                    ? "btn-ghost !px-2.5 !py-1.5 !text-xs"
+                    : "btn-secondary !px-2.5 !py-1.5 !text-xs"
+                }
+              >
+                {s.ok ? "Open" : "Set up"}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {err && (
-        <p className="mt-4 text-sm text-[var(--danger)]">{err}</p>
+        <p className="rounded-xl bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
+          {err}
+        </p>
+      )}
+      {msg && (
+        <p className="rounded-xl bg-[var(--teal-soft)] px-4 py-3 text-sm text-[var(--teal)]">
+          {msg}
+        </p>
       )}
 
-      <button
-        type="button"
-        className="btn-primary mt-8"
-        disabled={busy || !readiness.canDeploy}
-        onClick={() => void deploy()}
-      >
-        {busy ? "Deploying…" : "Deploy to your host"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busy || !readiness.canDeploy}
+          onClick={() => void ship()}
+        >
+          {busy ? "Shipping…" : "Ship latest version →"}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => void copyReport()}
+        >
+          Copy report for AI tool
+        </button>
+      </div>
     </div>
   );
 }

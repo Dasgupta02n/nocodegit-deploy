@@ -22,7 +22,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!user) return unauthorized();
   if (!isPaidPlan(user.plan)) {
     return error(
-      "Ads & affiliate editor is a Pro feature ($5/mo). Free users can deploy code that already includes affiliate links.",
+      "Ads & affiliate editor is a Pro feature (₹500/mo). Free users can deploy code that already includes affiliate links.",
       403
     );
   }

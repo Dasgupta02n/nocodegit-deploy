@@ -95,7 +95,27 @@ export const config = {
   get razorpayPlanPro() {
     return env("RAZORPAY_PLAN_PRO") || "";
   },
+  /**
+   * Razorpay Payment Button id (Dashboard → Payment Buttons), e.g. pl_...
+   * Used for the embedded Pay button on /app/billing.
+   */
+  get razorpayPaymentButtonId() {
+    return (
+      env("RAZORPAY_PAYMENT_BUTTON_ID", "NEXT_PUBLIC_RAZORPAY_PAYMENT_BUTTON_ID") ||
+      ""
+    );
+  },
+  /** True when Payment Button and/or full API subscription checkout is configured */
   get razorpayEnabled() {
+    return Boolean(
+      config.razorpayPaymentButtonId ||
+        (config.razorpayKeyId &&
+          config.razorpayKeySecret &&
+          config.razorpayPlanPro)
+    );
+  },
+  /** Full subscription API checkout (needs keys + plan id) */
+  get razorpaySubscriptionEnabled() {
     return Boolean(
       config.razorpayKeyId &&
         config.razorpayKeySecret &&

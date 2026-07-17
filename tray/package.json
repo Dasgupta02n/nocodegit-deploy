@@ -12,8 +12,11 @@
     "appId": "tech.nocodegit.tray",
     "productName": "NoCodeGit Tray",
     "directories": { "output": "dist" },
-    "files": ["main.js", "package.json"],
-    "win": { "target": ["nsis"] },
+    "files": ["main.js", "package.json", "icon.png", "icon.ico"],
+    "win": {
+      "target": ["portable"],
+      "icon": "icon.ico"
+    },
     "mac": { "target": ["dmg"] }
   },
   "devDependencies": {

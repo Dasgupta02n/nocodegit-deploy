@@ -9,11 +9,11 @@ Control plane for vibe-coded projects:
 | Store version ZIPs | Host your live site |
 | Deploy to **your** Netlify / Vercel hook / SFTP | Run customer containers |
 | Encrypted API keys + optional env push | Call OpenAI for you |
-| Pro ads/affiliate editor ($5/mo) | Free ads editor |
+| Pro ads/affiliate editor (₹500/mo) | Free ads editor |
 
 ## Plans
 
-| | Free | Pro ($5/mo) |
+| | Free | Pro (₹500/mo) |
 |--|------|-------------|
 | Save size | **300 MB** | **Unlimited** |
 | Deploy | Yes | Yes |

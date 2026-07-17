@@ -18,7 +18,7 @@ const display = Instrument_Serif({
 export const metadata: Metadata = {
   title: "NoCodeGit — Save. Ship. Still.",
   description:
-    "Version vault and one-click deploy for vibe-coded projects. Free 300MB saves; Pro $5/mo unlimited + ads editor. We never run your live app.",
+    "Version vault and one-click deploy for vibe-coded projects. Free 300MB saves; Pro ₹500/mo unlimited + ads editor. We never run your live app.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || "https://nocodegit.tech"
   ),

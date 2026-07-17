@@ -18,7 +18,7 @@ export default async function AppHome() {
           Your workspace
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Save versions · Connect host · Deploy. Free 300 MB · Pro $5/mo.
+          Save versions · Connect host · Deploy. Free 300 MB · Pro ₹500/mo.
         </p>
       </div>
 

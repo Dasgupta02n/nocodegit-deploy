@@ -353,11 +353,45 @@ function rebuildMenu(tray) {
   tray.setToolTip(`NoCodeGit — ${statusLine(cfg)}`);
 }
 
+/** Keep Tray alive — local refs are GC'd and the icon vanishes on Windows. */
+let tray = null;
+
+/** Solid blue square tray icon (16x16 on Windows). */
+function createTrayIcon() {
+  const candidates = [
+    path.join(__dirname, "icon.ico"),
+    path.join(__dirname, "icon.png"),
+    path.join(process.resourcesPath || "", "icon.ico"),
+    path.join(process.resourcesPath || "", "icon.png"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (p && fs.existsSync(p)) {
+        let icon = nativeImage.createFromPath(p);
+        if (!icon.isEmpty()) {
+          if (process.platform === "win32") {
+            icon = icon.resize({ width: 16, height: 16 });
+          }
+          return icon;
+        }
+      }
+    } catch (_) {
+      /* try next */
+    }
+  }
+  // Embedded solid blue 32x32 PNG fallback
+  const pngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABUSURBVFhHxcghAQAgAAQx0tK/wVNg+hAzO+duXzFLzBKzxCwxS8wSs8QsMUvMErPELDFLzBKzxCwxS8wSs8QsMUvMErPELDFLzBKzxCwxS8wSM7M9aGqQiG0/DE8AAAAASUVORK5CYII=";
+  let icon = nativeImage.createFromBuffer(Buffer.from(pngBase64, "base64"));
+  if (process.platform === "win32" && !icon.isEmpty()) {
+    icon = icon.resize({ width: 16, height: 16 });
+  }
+  return icon;
+}
+
 app.whenReady().then(() => {
-  const icon = nativeImage.createFromDataURL(
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAKElEQVQ4T2NkYGD4z0ABYBzVMKoBBgPDfwYGBoZRM0Y1jGoY1QAAVw0GAf7vQK0AAAAASUVORK5CYII="
-  );
-  const tray = new Tray(icon);
+  const icon = createTrayIcon();
+  tray = new Tray(icon);
   tray.setToolTip("NoCodeGit — Save. Ship. Still.");
   rebuildMenu(tray);
   const cfg = loadConfig();

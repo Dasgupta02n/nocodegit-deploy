@@ -425,7 +425,7 @@ export function ProjectWorkspace(props: Props) {
                 {" "}
                 · Limit {props.uploadLimitLabel} ·{" "}
                 <Link href="/app/billing" className="text-[var(--teal)]">
-                  Pro $5
+                  Pro ₹500
                 </Link>
               </>
             )}
@@ -941,7 +941,7 @@ export function ProjectWorkspace(props: Props) {
             <p className="rounded-xl bg-[var(--clay-soft)] px-4 py-3 text-sm text-[var(--muted)]">
               Ads editor is on Pro.{" "}
               <Link href="/app/billing" className="font-semibold text-[var(--teal)]">
-                Upgrade — $5/mo
+                Upgrade — ₹500/mo
               </Link>
             </p>
           )}

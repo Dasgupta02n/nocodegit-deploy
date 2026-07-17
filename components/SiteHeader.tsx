@@ -9,12 +9,21 @@ export function SiteHeader() {
       <div className="site-nav">
         <BrandLogo />
         <nav className="flex items-center gap-1 sm:gap-2">
-          <Link href="/docs" className="btn-ghost hidden sm:inline-flex">
+          <Link href="/download" className="btn-ghost hidden sm:inline-flex">
+            Download tray
+          </Link>
+          <Link href="/docs" className="btn-ghost hidden md:inline-flex">
             Docs
           </Link>
           <Link href="/login" className="btn-ghost">
             Log in
           </Link>
+          <a
+            href="/downloads/NoCodeGit-Tray-win-x64.exe"
+            className="btn-secondary hidden !py-2 !text-xs sm:inline-flex"
+          >
+            Get tray
+          </a>
           <Link href="/signup" className="btn-primary">
             Get started →
           </Link>

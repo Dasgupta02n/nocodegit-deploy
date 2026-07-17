@@ -15,9 +15,18 @@ export default async function ShipPage({ params }: Props) {
   if (!bundle) notFound();
   const readiness = shipReadiness(bundle);
 
+  const hostingLabel = bundle.hosting
+    ? bundle.hosting.display_name || bundle.hosting.provider
+    : null;
+
   return (
     <AppShell email={user.email}>
-      <ProjectChrome project={bundle.project} readiness={readiness}>
+      <ProjectChrome
+        project={bundle.project}
+        readiness={readiness}
+        hostingLabel={hostingLabel}
+        envCount={bundle.env?.length ?? 0}
+      >
         <ShipChecklist projectId={id} readiness={readiness} />
       </ProjectChrome>
     </AppShell>

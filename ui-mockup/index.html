@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NoCodeGit — UI concept (control plane)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f7f4ef;
+      --elevated: #ffffff;
+      --ink: #141414;
+      --muted: #5c574f;
+      --faint: #8a847a;
+      --line: #e8e4dc;
+      --teal: #2f6f6b;
+      --teal-hover: #255955;
+      --teal-soft: #e4f0ef;
+      --clay: #c4a484;
+      --danger: #b42318;
+      --danger-soft: #fef3f2;
+      --success: #067647;
+      --success-soft: #ecfdf3;
+      --warn: #b54708;
+      --warn-soft: #fffaeb;
+      --shadow: 0 1px 2px rgba(20, 20, 20, 0.04), 0 8px 24px rgba(20, 20, 20, 0.06);
+      --shadow-lg: 0 4px 6px rgba(20, 20, 20, 0.03), 0 16px 40px rgba(20, 20, 20, 0.08);
+      --radius: 14px;
+      --nav-w: 220px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .display { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; letter-spacing: -0.03em; }
+
+    /* Top bar */
+    .topbar {
+      height: 56px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 244, 239, 0.9);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .brand-mark {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: var(--teal);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .top-links { display: flex; gap: 0.35rem; align-items: center; }
+    .top-links a, .top-links button {
+      border: none; background: transparent;
+      font: inherit; font-size: 0.8125rem; font-weight: 500;
+      color: var(--muted); padding: 0.4rem 0.75rem;
+      border-radius: 999px; cursor: pointer; text-decoration: none;
+    }
+    .top-links a:hover, .top-links button:hover { background: #fff; color: var(--ink); }
+    .top-links a.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 999px;
+      background: var(--teal-soft); color: var(--teal);
+      display: grid; place-items: center; font-size: 0.7rem; font-weight: 700;
+      margin-left: 0.5rem;
+    }
+
+    /* Shell */
+    .shell {
+      display: grid;
+      grid-template-columns: var(--nav-w) 1fr;
+      min-height: calc(100vh - 56px);
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidenav { display: none; }
+    }
+
+    .sidenav {
+      border-right: 1px solid var(--line);
+      padding: 1.25rem 0.85rem;
+      background: transparent;
+    }
+    .proj-label {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--faint);
+      padding: 0 0.65rem 0.5rem;
+    }
+    .proj-name {
+      font-size: 0.9rem; font-weight: 600;
+      padding: 0.35rem 0.65rem 1rem;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.55rem;
+      width: 100%; text-align: left;
+      border: none; background: transparent;
+      font: inherit; font-size: 0.8375rem; font-weight: 500;
+      color: var(--muted); padding: 0.55rem 0.7rem;
+      border-radius: 10px; cursor: pointer; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.7); color: var(--ink); }
+    .nav-item.active {
+      background: #fff; color: var(--ink);
+      box-shadow: var(--shadow); font-weight: 600;
+    }
+    .nav-item .dot {
+      width: 6px; height: 6px; border-radius: 999px; background: var(--line);
+    }
+    .nav-item.active .dot { background: var(--teal); }
+
+    .main { padding: 1.5rem 1.75rem 3rem; max-width: 920px; }
+    .crumb { font-size: 0.8rem; color: var(--faint); margin-bottom: 1rem; }
+    .crumb strong { color: var(--muted); font-weight: 500; }
+
+    /* Project header */
+    .proj-head {
+      display: flex; flex-wrap: wrap; align-items: flex-start;
+      justify-content: space-between; gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .proj-head h1 {
+      font-size: 1.75rem; line-height: 1.15;
+    }
+    .proj-head .sub {
+      margin-top: 0.35rem; font-size: 0.875rem; color: var(--muted);
+    }
+    .proj-head .sub a { color: var(--teal); text-decoration: none; font-weight: 500; }
+    .proj-head .sub a:hover { text-decoration: underline; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      border-radius: 999px; font-size: 0.875rem; font-weight: 600;
+      padding: 0.65rem 1.2rem; border: none; cursor: pointer;
+      font-family: inherit; transition: 0.15s ease;
+    }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover { background: var(--teal-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: #fff; color: var(--ink);
+      border: 1.5px solid var(--line);
+    }
+    .btn-secondary:hover { border-color: #d4cfc4; }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid transparent;
+    }
+    .btn-ghost:hover { color: var(--ink); background: #fff; }
+
+    /* Status strip */
+    .status-strip {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.35rem 0.7rem; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff;
+      color: var(--muted); cursor: default;
+    }
+    .chip.ok { background: var(--success-soft); border-color: #abefc6; color: var(--success); }
+    .chip.warn { background: var(--warn-soft); border-color: #fedf89; color: var(--warn); }
+    .chip.bad { background: var(--danger-soft); border-color: #fecdca; color: var(--danger); }
+    .chip-dot {
+      width: 7px; height: 7px; border-radius: 999px; background: currentColor;
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--elevated);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel + .panel { margin-top: 1rem; }
+    .panel-h {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--line);
+    }
+    .panel-h h2 { font-size: 0.9rem; font-weight: 600; }
+    .panel-h span { font-size: 0.75rem; color: var(--faint); font-weight: 500; }
+
+    /* Timeline */
+    .timeline { list-style: none; }
+    .save {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 0.75rem;
+      padding: 1rem 1.15rem;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+      transition: background 0.12s;
+    }
+    .save:last-child { border-bottom: none; }
+    .save:hover { background: #fafaf8; }
+    .save.latest { background: linear-gradient(90deg, var(--teal-soft) 0%, transparent 55%); }
+    .rail {
+      width: 28px; display: flex; flex-direction: column; align-items: center;
+      padding-top: 0.2rem;
+    }
+    .rail .node {
+      width: 12px; height: 12px; border-radius: 999px;
+      border: 2px solid var(--teal); background: #fff;
+    }
+    .save.latest .node { background: var(--teal); }
+    .rail .line {
+      flex: 1; width: 2px; background: var(--line); margin-top: 4px; min-height: 28px;
+    }
+    .save-title { font-size: 0.9rem; font-weight: 600; }
+    .save-meta { margin-top: 0.2rem; font-size: 0.78rem; color: var(--faint); }
+    .save-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Ship checklist */
+    .check-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.95rem 1.15rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .check-row:last-child { border-bottom: none; }
+    .check-ico {
+      width: 22px; height: 22px; border-radius: 999px;
+      display: grid; place-items: center; font-size: 0.7rem; font-weight: 700;
+    }
+    .check-ico.ok { background: var(--success-soft); color: var(--success); }
+    .check-ico.no { background: var(--warn-soft); color: var(--warn); }
+    .check-title { font-size: 0.875rem; font-weight: 600; }
+    .check-hint { font-size: 0.75rem; color: var(--faint); margin-top: 0.15rem; }
+
+    /* Deploy log */
+    .log {
+      background: #141414; color: #d4d0c8;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.78rem; line-height: 1.55;
+      padding: 1.1rem 1.2rem; min-height: 280px;
+      white-space: pre-wrap;
+    }
+    .log .ok { color: #6ee7b7; }
+    .log .dim { color: #6b6560; }
+    .log .err { color: #fca5a5; }
+    .log-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.15rem;
+      background: var(--success-soft); border-bottom: 1px solid #abefc6;
+      font-size: 0.8125rem; font-weight: 600; color: var(--success);
+    }
+    .log-banner.fail {
+      background: var(--danger-soft); border-color: #fecdca; color: var(--danger);
+    }
+
+    /* Latest deploy card */
+    .deploy-mini {
+      display: grid; grid-template-columns: 1fr auto; gap: 1rem;
+      padding: 1rem 1.15rem; align-items: center;
+    }
+    .badge {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 0.25rem 0.5rem; border-radius: 6px;
+    }
+    .badge.success { background: var(--success-soft); color: var(--success); }
+    .badge.running { background: var(--teal-soft); color: var(--teal); }
+
+    /* Views */
+    .view { display: none; animation: fade 0.2s ease; }
+    .view.active { display: block; }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* Concept banner */
+    .concept {
+      margin-bottom: 1.25rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px dashed var(--clay);
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .concept strong { color: var(--ink); }
+
+    .toast {
+      position: fixed; bottom: 1.25rem; right: 1.25rem;
+      background: var(--ink); color: #fff;
+      padding: 0.75rem 1.1rem; border-radius: 12px;
+      font-size: 0.8125rem; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      opacity: 0; pointer-events: none;
+      transform: translateY(8px);
+      transition: 0.25s ease; z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: none; }
+
+    .head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      NoCodeGit
+    </div>
+    <div class="top-links">
+      <a href="#" class="active">Projects</a>
+      <a href="#">Billing</a>
+      <a href="#">Account</a>
+      <div class="avatar">SD</div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidenav">
+      <div class="proj-label">Project</div>
+      <div class="proj-name">Sunset Booking</div>
+      <button type="button" class="nav-item active" data-view="timeline"><span class="dot"></span> Timeline</button>
+      <button type="button" class="nav-item" data-view="ship"><span class="dot"></span> Ship</button>
+      <button type="button" class="nav-item" data-view="deploys"><span class="dot"></span> Deploys</button>
+      <button type="button" class="nav-item" data-view="settings"><span class="dot"></span> Settings</button>
+    </aside>
+
+    <main class="main">
+      <div class="concept">
+        <strong>UI concept mockup</strong> — not the live app. Project home with status strip, version timeline, single <strong>Ship</strong> action. Calm control plane for vibe-coded projects.
+      </div>
+
+      <p class="crumb">Projects / <strong>Sunset Booking</strong></p>
+
+      <div class="proj-head">
+        <div>
+          <h1 class="display">Sunset Booking</h1>
+          <p class="sub">Live · <a href="#">sunset-booking.netlify.app</a> · Free plan</p>
+        </div>
+        <div class="head-actions">
+          <button type="button" class="btn btn-secondary" id="btnSave">Save version</button>
+          <button type="button" class="btn btn-primary" id="btnShip">Ship →</button>
+        </div>
+      </div>
+
+      <div class="status-strip" id="statusStrip">
+        <span class="chip ok"><span class="chip-dot"></span> Code saved</span>
+        <span class="chip ok"><span class="chip-dot"></span> Hosting · Netlify</span>
+        <span class="chip ok"><span class="chip-dot"></span> Env · 4 keys</span>
+        <span class="chip warn"><span class="chip-dot"></span> Domain · not set</span>
+        <span class="chip ok"><span class="chip-dot"></span> Ready to ship</span>
+      </div>
+
+      <!-- TIMELINE -->
+      <section class="view active" id="view-timeline">
+        <div class="panel">
+          <div class="panel-h">
+            <h2>Versions</h2>
+            <span>Restore points · no Git</span>
+          </div>
+          <ul class="timeline">
+            <li class="save latest">
+              <div class="rail"><div class="node"></div><div class="line"></div></div>
+              <div>
+                <div class="save-title">Evening polish · ads markers</div>
+                <div class="save-meta">12 min ago · 18.4 MB · latest</div>
+              </div>
+              <div class="save-actions">
+                <button type="button" class="btn btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.75rem">Preview</button>
+                <button type="button" class="btn btn-secondary" style="padding:0.4rem 0.75rem;font-size:0.75rem" data-ship>Ship this</button>
+              </div>
+            </li>
+            <li class="save">
+              <div class="rail"><div class="node"></div><div class="line"></div></div>
+              <div>
+                <div class="save-title">Before pricing tweak</div>
+                <div class="save-meta">Yesterday · 17.9 MB</div>
+              </div>
+              <div class="save-actions">
+                <button type="button" class="btn btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.75rem">Preview</button>
+                <button type="button" class="btn btn-secondary" style="padding:0.4rem 0.75rem;font-size:0.75rem" data-ship>Ship this</button>
+              </div>
+            </li>
+            <li class="save">
+              <div class="rail"><div class="node"></div></div>
+              <div>
+                <div class="save-title">First zip from tray</div>
+                <div class="save-meta">3 days ago · 16.2 MB</div>
+              </div>
+              <div class="save-actions">
+                <button type="button" class="btn btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.75rem">Preview</button>
+                <button type="button" class="btn btn-secondary" style="padding:0.4rem 0.75rem;font-size:0.75rem" data-ship>Ship this</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel" style="margin-top:1rem">
+          <div class="panel-h">
+            <h2>Last deploy</h2>
+            <span class="badge success">Success</span>
+          </div>
+          <div class="deploy-mini">
+            <div>
+              <div style="font-size:0.875rem;font-weight:600">Deployed “Before pricing tweak”</div>
+              <div style="font-size:0.78rem;color:var(--faint);margin-top:0.25rem">Yesterday 6:42 PM · Netlify · 34s</div>
+            </div>
+            <button type="button" class="btn btn-secondary" data-view-jump="deploys">View logs</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SHIP -->
+      <section class="view" id="view-ship">
+        <div class="panel">
+          <div class="panel-h">
+            <h2>Ship readiness</h2>
+            <span>Fix gaps, then ship</span>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">✓</div>
+            <div>
+              <div class="check-title">Code saved</div>
+              <div class="check-hint">At least one version on NoCodeGit</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Open</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">✓</div>
+            <div>
+              <div class="check-title">Hosting connected</div>
+              <div class="check-hint">Netlify · site sunset-booking</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Open</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">✓</div>
+            <div>
+              <div class="check-title">Environment</div>
+              <div class="check-hint">4 keys encrypted · optional push on ship</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Open</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico no">!</div>
+            <div>
+              <div class="check-title">Domain / live URL</div>
+              <div class="check-hint">Optional — set when you have a custom domain</div>
+            </div>
+            <button type="button" class="btn btn-secondary" style="font-size:0.75rem;padding:0.4rem 0.8rem" data-view-jump="settings">Set up</button>
+          </div>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" id="btnShip2">Ship latest version →</button>
+          <button type="button" class="btn btn-secondary">Copy report for AI tool</button>
+        </div>
+      </section>
+
+      <!-- DEPLOYS -->
+      <section class="view" id="view-deploys">
+        <div class="panel">
+          <div class="log-banner" id="logBanner">Deploy succeeded · live on Netlify</div>
+          <div class="log" id="logBody"><span class="dim">1/6</span> Loading snapshot…
+<span class="dim">2/6</span> Extracting package…
+<span class="dim">3/6</span> Applying snippets (2) + affiliates (1)…
+<span class="dim">4/6</span> Packaging for host…
+<span class="dim">5/6</span> Pushing env vars to Netlify…
+<span class="dim">6/6</span> Uploading to Netlify…
+<span class="ok">✓ Deploy complete</span>  https://sunset-booking.netlify.app
+<span class="dim">34.2s total</span></div>
+        </div>
+        <div class="panel" style="margin-top:1rem">
+          <div class="panel-h"><h2>History</h2><span>3 deploys</span></div>
+          <div class="check-row">
+            <div class="check-ico ok">✓</div>
+            <div>
+              <div class="check-title">Before pricing tweak</div>
+              <div class="check-hint">Yesterday · Netlify · 34s</div>
+            </div>
+            <span class="badge success">Success</span>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">✓</div>
+            <div>
+              <div class="check-title">First zip from tray</div>
+              <div class="check-hint">3 days ago · Netlify · 41s</div>
+            </div>
+            <span class="badge success">Success</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <div class="panel">
+          <div class="panel-h"><h2>Settings</h2><span>Trustworthy & boring</span></div>
+          <div class="check-row">
+            <div class="check-ico ok">G</div>
+            <div>
+              <div class="check-title">General</div>
+              <div class="check-hint">Name, slug, live URL</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Edit</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">H</div>
+            <div>
+              <div class="check-title">Hosting</div>
+              <div class="check-hint">Netlify connected · credentials encrypted</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Edit</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico ok">E</div>
+            <div>
+              <div class="check-title">Environment</div>
+              <div class="check-hint">OPENAI_API_KEY, DATABASE_URL, …</div>
+            </div>
+            <button type="button" class="btn btn-ghost" style="font-size:0.75rem">Edit</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico no">D</div>
+            <div>
+              <div class="check-title">Domain</div>
+              <div class="check-hint">Optional custom domain record</div>
+            </div>
+            <button type="button" class="btn btn-secondary" style="font-size:0.75rem;padding:0.4rem 0.8rem">Add</button>
+          </div>
+          <div class="check-row">
+            <div class="check-ico no">S</div>
+            <div>
+              <div class="check-title">Snippets & affiliates</div>
+              <div class="check-hint">Pro · ₹500/mo</div>
+            </div>
+            <button type="button" class="btn btn-secondary" style="font-size:0.75rem;padding:0.4rem 0.8rem">Upgrade</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const views = ["timeline", "ship", "deploys", "settings"];
+    const toastEl = document.getElementById("toast");
+    let toastTimer;
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+    }
+
+    function go(view) {
+      views.forEach((v) => {
+        document.getElementById("view-" + v).classList.toggle("active", v === view);
+      });
+      document.querySelectorAll(".nav-item").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === view);
+      });
+    }
+
+    document.querySelectorAll(".nav-item").forEach((btn) => {
+      btn.addEventListener("click", () => go(btn.dataset.view));
+    });
+    document.querySelectorAll("[data-view-jump]").forEach((btn) => {
+      btn.addEventListener("click", () => go(btn.dataset.viewJump));
+    });
+
+    function runShip() {
+      go("deploys");
+      const banner = document.getElementById("logBanner");
+      const log = document.getElementById("logBody");
+      banner.className = "log-banner";
+      banner.textContent = "Deploy running…";
+      banner.classList.remove("fail");
+      const steps = [
+        '<span class="dim">1/6</span> Loading snapshot…',
+        '<span class="dim">2/6</span> Extracting package…',
+        '<span class="dim">3/6</span> Applying snippets…',
+        '<span class="dim">4/6</span> Packaging for host…',
+        '<span class="dim">5/6</span> Pushing env vars…',
+        '<span class="dim">6/6</span> Uploading to Netlify…',
+        '<span class="ok">✓ Deploy complete</span>  https://sunset-booking.netlify.app',
+        '<span class="dim">28.1s total</span>',
+      ];
+      log.innerHTML = "";
+      let i = 0;
+      const tick = () => {
+        if (i < steps.length) {
+          log.innerHTML += (i ? "\n" : "") + steps[i];
+          i++;
+          setTimeout(tick, 320);
+        } else {
+          banner.textContent = "Deploy succeeded · live on Netlify";
+          showToast("Shipped latest version");
+        }
+      };
+      tick();
+    }
+
+    document.getElementById("btnShip").addEventListener("click", runShip);
+    document.getElementById("btnShip2").addEventListener("click", runShip);
+    document.querySelectorAll("[data-ship]").forEach((b) => b.addEventListener("click", runShip));
+    document.getElementById("btnSave").addEventListener("click", () => {
+      showToast("Version saved (mock)");
+    });
+  </script>
+</body>
+</html>
