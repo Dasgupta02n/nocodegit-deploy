@@ -26,15 +26,15 @@ Control plane for vibe-coded projects:
 - **Next.js 15** App Router  
 - **SQLite** (`better-sqlite3`) — free OSS DB  
 - bcrypt + JWT cookies · AES-256-GCM secrets  
-- **SendGrid** transactional email  
-- Stripe optional · Electron tray · ssh2 SFTP  
+- **Resend** transactional email  
+- Razorpay optional · Electron tray · ssh2 SFTP  
 
 ## Quick start
 
 ```bash
 cp .env.example .env.local
 # set NOCODEGIT_SECRET, NEXT_PUBLIC_APP_URL
-# optional: SENDGRID_API_KEY, EMAIL_FROM
+# optional: RESEND_API_KEY, EMAIL_FROM
 
 npm install
 npm run dev
@@ -53,8 +53,8 @@ See **`.env.example`**. Primary names:
 | `NOCODEGIT_DATA_DIR` | Data root |
 | `NOCODEGIT_DATABASE_PATH` | SQLite path |
 | `NOCODEGIT_STORAGE_PATH` | Snapshot ZIPs |
-| `SENDGRID_API_KEY` | SendGrid API key |
-| `EMAIL_FROM` | Verified sender |
+| `RESEND_API_KEY` | Resend API key |
+| `EMAIL_FROM` | Verified sender (domain must be verified in Resend) |
 | `STRIPE_SECRET_KEY` / `STRIPE_PRICE_PRO` / `STRIPE_WEBHOOK_SECRET` | Pro billing |
 
 Legacy `QUAY_*` env vars still work as **fallbacks** if present.
@@ -69,20 +69,21 @@ npm start
 
 Back up `data/nocodegit.sqlite` and `data/snapshots`.
 
-### SendGrid
+### Resend
 
-1. API key at [SendGrid](https://app.sendgrid.com/settings/api_keys)  
-2. Verify sender domain/email  
-3. Set `SENDGRID_API_KEY` + `EMAIL_FROM=NoCodeGit <noreply@yourdomain>`  
+1. API key at [Resend](https://resend.com/api-keys)  
+2. Add & verify domain DNS (DKIM + SPF on `send` subdomain)  
+3. Set `RESEND_API_KEY` + `EMAIL_FROM=NoCodeGit <noreply@yourdomain>`  
 4. Used for: **password reset**, **welcome** email  
 
-Without SendGrid, messages are logged (dev).
+Without Resend, messages are logged (dev).
 
-### Stripe Pro $5
+### Razorpay Pro
 
-1. Create $5/month Price → `STRIPE_PRICE_PRO`  
-2. Webhook → `POST /api/billing/webhook`  
-3. UI → `/app/billing`
+1. Create a monthly Plan in Razorpay Dashboard → `RAZORPAY_PLAN_PRO`  
+2. API keys → `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET`  
+3. Webhook (subscription.*) → `POST /api/billing/webhook` + `RAZORPAY_WEBHOOK_SECRET`  
+4. UI → `/app/billing`
 
 ### Tray
 

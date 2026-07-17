@@ -47,3 +47,15 @@ yarn-error.log*
 next-env.d.ts
 *.tsbuildinfo
 
+
+# Hostinger secrets
+Hostinger.env
+*.Hostinger.env
+
+
+.secrets-vps.env
+
+
+# Large binaries (build tray with npm run dist in tray/)
+public/downloads/*.exe
+

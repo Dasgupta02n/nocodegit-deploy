@@ -162,6 +162,39 @@ function migrate(database: Database.Database) {
       `ALTER TABLE users ADD COLUMN plan_status TEXT NOT NULL DEFAULT 'active'`
     );
   }
+  if (!names.has("razorpay_customer_id")) {
+    database.exec(`ALTER TABLE users ADD COLUMN razorpay_customer_id TEXT`);
+  }
+  if (!names.has("razorpay_subscription_id")) {
+    database.exec(`ALTER TABLE users ADD COLUMN razorpay_subscription_id TEXT`);
+  }
+  if (!names.has("email_verified")) {
+    database.exec(
+      `ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`
+    );
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS email_verify_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      user_agent TEXT,
+      ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revoked_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id);
+  `);
 }
 
 export type UserRow = {
@@ -172,7 +205,10 @@ export type UserRow = {
   plan: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  razorpay_customer_id: string | null;
+  razorpay_subscription_id: string | null;
   plan_status: string;
+  email_verified: number;
   created_at: string;
 };
 

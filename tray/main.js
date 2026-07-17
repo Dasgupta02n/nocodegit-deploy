@@ -185,6 +185,49 @@ async function doDeploy(cfg) {
   return data;
 }
 
+function statusLine(cfg) {
+  const p = (cfg.projects || []).find((x) => x.id === cfg.projectId);
+  const name = p?.name || cfg.projectId || "no project";
+  const folder = cfg.folderPath ? path.basename(cfg.folderPath) : "no folder";
+  const host = cfg.hostingLabel || "host ?";
+  const envN = cfg.envCount != null ? cfg.envCount : "?";
+  const snN = cfg.snipCount != null ? cfg.snipCount : "?";
+  return `${host} · Env ${envN} · Snips ${snN} · ${name} · ${folder}`;
+}
+
+async function refreshStatus(cfg) {
+  if (!cfg.token) return cfg;
+  try {
+    const data = await request("GET", "/api/agent/projects", {
+      token: cfg.token,
+      apiUrl: cfg.apiUrl,
+    });
+    cfg.projects = (data.projects || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+    }));
+    if (cfg.projectId) {
+      try {
+        const st = await request(
+          "GET",
+          `/api/agent/projects/${cfg.projectId}/status`,
+          { token: cfg.token, apiUrl: cfg.apiUrl }
+        );
+        cfg.hostingLabel = st.statusLine?.split(" · ")[0] || st.hosting?.provider;
+        cfg.envCount = st.envCount;
+        cfg.snipCount = st.snipCount;
+        cfg.statusLine = st.statusLine;
+      } catch {
+        /* ignore */
+      }
+    }
+    saveConfig(cfg);
+  } catch {
+    /* ignore */
+  }
+  return cfg;
+}
+
 function rebuildMenu(tray) {
   const cfg = loadConfig();
   const projectItems = (cfg.projects || []).map((p) => ({
@@ -199,12 +242,17 @@ function rebuildMenu(tray) {
 
   const menu = Menu.buildFromTemplate([
     { label: "NoCodeGit Tray", enabled: false },
+    {
+      label: statusLine(cfg),
+      enabled: false,
+    },
     { type: "separator" },
     {
       label: "Save",
       click: async () => {
         try {
           await doSave(loadConfig());
+          rebuildMenu(tray);
         } catch (e) {
           dialog.showErrorBox("Save failed", e.message);
         }
@@ -215,6 +263,7 @@ function rebuildMenu(tray) {
       click: async () => {
         try {
           await doDeploy(loadConfig());
+          rebuildMenu(tray);
         } catch (e) {
           dialog.showErrorBox("Deploy failed", e.message);
         }
@@ -225,9 +274,18 @@ function rebuildMenu(tray) {
       click: () => {
         const c = loadConfig();
         clipboard.writeText(
-          `NoCodeGit tray report\nProject: ${c.projectId}\nTime: ${new Date().toISOString()}\n\nPaste latest deploy log from the web Ship tab into your vibe tool.`
+          `NoCodeGit tray report\nProject: ${c.projectId}\nTime: ${new Date().toISOString()}\n\nPaste latest deploy log from Deploy history into your vibe tool.\n\nPre-save checklist:\n- App listens on PORT if required by host\n- DATABASE_URL / env keys set in NoCodeGit Environment\n- Snippet markers <!-- ncg:snippet:... --> if using Pro ads`
         );
         notify("NoCodeGit", "Report template copied");
+      },
+    },
+    {
+      label: "Pre-save checklist (copy)",
+      click: () => {
+        clipboard.writeText(
+          `NoCodeGit pre-save checklist\n1. Project runs locally\n2. Env vars named for production (OPENAI_API_KEY, DATABASE_URL, …)\n3. Add keys in NoCodeGit → Settings → Environment\n4. Hosting connected (Settings → Hosting)\n5. Optional: ncg:snippet markers for ads\n6. Save ZIP (exclude node_modules)\n7. Deploy`
+        );
+        notify("NoCodeGit", "Pre-save checklist copied");
       },
     },
     { type: "separator" },
@@ -235,9 +293,10 @@ function rebuildMenu(tray) {
       label: "Refresh projects",
       click: async () => {
         try {
-          const list = await refreshProjects(loadConfig());
+          const c = await refreshStatus(loadConfig());
+          await refreshProjects(c);
           rebuildMenu(tray);
-          notify("NoCodeGit", `${list.length} project(s)`);
+          notify("NoCodeGit", "Projects refreshed");
         } catch (e) {
           dialog.showErrorBox("Refresh failed", e.message);
         }
@@ -291,6 +350,7 @@ function rebuildMenu(tray) {
     { label: "Quit", click: () => app.quit() },
   ]);
   tray.setContextMenu(menu);
+  tray.setToolTip(`NoCodeGit — ${statusLine(cfg)}`);
 }
 
 app.whenReady().then(() => {

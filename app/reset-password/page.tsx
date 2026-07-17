@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AuthLayout } from "@/components/AuthLayout";
 
 function ResetForm() {
   const sp = useSearchParams();
@@ -36,11 +37,13 @@ function ResetForm() {
   }
 
   if (!token) {
-    return <p className="text-sm text-[var(--danger)]">Missing reset token.</p>;
+    return (
+      <p className="text-sm text-[var(--danger)]">Missing reset token.</p>
+    );
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mt-6 space-y-4 p-6">
+    <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label">New password</label>
         <input
@@ -63,14 +66,19 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-lg font-semibold">
-        NoCodeGit
-      </Link>
-      <h1 className="text-2xl font-semibold">Choose a new password</h1>
-      <Suspense fallback={<p className="mt-6 text-sm">Loading…</p>}>
+    <AuthLayout
+      title="Choose a new password"
+      subtitle="At least 8 characters."
+    >
+      <Suspense fallback={<p className="text-sm text-[var(--muted)]">Loading…</p>}>
         <ResetForm />
       </Suspense>
-    </div>
+      <Link
+        href="/login"
+        className="mt-6 block text-center text-sm text-[var(--teal)]"
+      >
+        Back to login
+      </Link>
+    </AuthLayout>
   );
 }

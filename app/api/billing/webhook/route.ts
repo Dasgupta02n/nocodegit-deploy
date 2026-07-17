@@ -1,84 +1,92 @@
 import { getDb } from "@/lib/db";
 import { config } from "@/lib/config";
-import { getStripe } from "@/lib/stripe";
+import { verifyRazorpayWebhookSignature } from "@/lib/razorpay";
 import { error, json } from "@/lib/api";
-import type Stripe from "stripe";
 
 export const runtime = "nodejs";
 
+/**
+ * Razorpay webhooks: subscription.activated, subscription.charged,
+ * subscription.cancelled, subscription.completed, payment.failed
+ * Set endpoint secret as RAZORPAY_WEBHOOK_SECRET
+ */
 export async function POST(req: Request) {
-  const stripe = getStripe();
-  if (!stripe || !config.stripeWebhookSecret) {
+  if (!config.razorpayWebhookSecret) {
     return error("Webhook not configured", 503);
   }
 
-  const sig = req.headers.get("stripe-signature");
-  if (!sig) return error("Missing signature", 400);
-
   const raw = await req.text();
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(
-      raw,
-      sig,
-      config.stripeWebhookSecret
-    );
-  } catch (e) {
-    console.error(e);
+  const sig = req.headers.get("x-razorpay-signature");
+  if (!verifyRazorpayWebhookSignature(raw, sig)) {
     return error("Invalid signature", 400);
   }
 
-  const db = getDb();
+  let payload: {
+    event?: string;
+    payload?: {
+      subscription?: {
+        entity?: {
+          id?: string;
+          status?: string;
+          notes?: Record<string, string>;
+          customer_id?: string;
+        };
+      };
+      payment?: {
+        entity?: {
+          notes?: Record<string, string>;
+        };
+      };
+    };
+  };
 
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const userId =
-          session.metadata?.ncg_user_id || session.metadata?.quay_user_id;
-        const plan = session.metadata?.plan || "pro";
-        if (userId && session.subscription) {
-          db.prepare(
-            `UPDATE users SET plan = ?, stripe_subscription_id = ?, plan_status = 'active', updated_at = datetime('now') WHERE id = ?`
-          ).run(plan, String(session.subscription), userId);
-        }
-        break;
+    payload = JSON.parse(raw);
+  } catch {
+    return error("Invalid JSON", 400);
+  }
+
+  const db = getDb();
+  const event = payload.event || "";
+  const sub = payload.payload?.subscription?.entity;
+  const userId =
+    sub?.notes?.ncg_user_id ||
+    payload.payload?.payment?.entity?.notes?.ncg_user_id;
+  const subId = sub?.id;
+  const status = sub?.status || "";
+
+  try {
+    if (
+      event === "subscription.activated" ||
+      event === "subscription.charged" ||
+      event === "subscription.resumed"
+    ) {
+      if (userId) {
+        db.prepare(
+          `UPDATE users SET plan = 'pro', plan_status = ?, razorpay_subscription_id = COALESCE(?, razorpay_subscription_id), updated_at = datetime('now') WHERE id = ?`
+        ).run(status || "active", subId || null, userId);
+      } else if (subId) {
+        db.prepare(
+          `UPDATE users SET plan = 'pro', plan_status = ? WHERE razorpay_subscription_id = ?`
+        ).run(status || "active", subId);
       }
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const userId = sub.metadata?.ncg_user_id || sub.metadata?.quay_user_id;
-        const status = sub.status;
-        const plan =
-          status === "active" || status === "trialing"
-            ? sub.metadata?.plan || "pro"
-            : "free";
-        if (userId) {
-          db.prepare(
-            `UPDATE users SET plan = ?, plan_status = ?, stripe_subscription_id = ?, updated_at = datetime('now') WHERE id = ?`
-          ).run(
-            plan,
-            status,
-            status === "canceled" ? null : sub.id,
-            userId
-          );
-        } else if (sub.customer) {
-          db.prepare(
-            `UPDATE users SET plan = ?, plan_status = ?, stripe_subscription_id = ?, updated_at = datetime('now') WHERE stripe_customer_id = ?`
-          ).run(
-            plan,
-            status,
-            status === "canceled" ? null : sub.id,
-            String(sub.customer)
-          );
-        }
-        break;
+    } else if (
+      event === "subscription.cancelled" ||
+      event === "subscription.completed" ||
+      event === "subscription.halted"
+    ) {
+      if (userId) {
+        db.prepare(
+          `UPDATE users SET plan = 'free', plan_status = ?, razorpay_subscription_id = NULL, updated_at = datetime('now') WHERE id = ?`
+        ).run(status || "canceled", userId);
+      } else if (subId) {
+        db.prepare(
+          `UPDATE users SET plan = 'free', plan_status = ?, razorpay_subscription_id = NULL WHERE razorpay_subscription_id = ?`
+        ).run(status || "canceled", subId);
       }
-      default:
-        break;
     }
   } catch (e) {
-    console.error("Webhook handler error", e);
+    console.error("Razorpay webhook handler error", e);
     return error("Handler failed", 500);
   }
 

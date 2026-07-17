@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { BillingClient } from "@/components/BillingClient";
-import { PLANS } from "@/lib/stripe";
+import { PLANS } from "@/lib/razorpay";
 import { config } from "@/lib/config";
 
 export default async function BillingPage({
@@ -23,15 +23,16 @@ export default async function BillingPage({
         </Link>
         <span> / Billing</span>
       </div>
-      <h1 className="text-2xl font-semibold">Billing</h1>
-      <p className="mt-1 text-sm text-[var(--muted)]">
+      <p className="section-eyebrow">Billing</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight">Plans</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">
         Current plan:{" "}
         <strong className="text-[var(--ink)]">{user.plan || "free"}</strong>
         {user.plan_status ? ` (${user.plan_status})` : ""}
       </p>
       {sp.success && (
         <p className="mt-4 rounded-xl bg-[var(--teal-soft)] px-4 py-3 text-sm text-[var(--teal)]">
-          Payment successful. Plan updates when Stripe webhook confirms.
+          Payment successful. Plan updates when Razorpay webhook confirms.
         </p>
       )}
       {sp.canceled && (
@@ -40,7 +41,7 @@ export default async function BillingPage({
         </p>
       )}
       <BillingClient
-        stripeEnabled={config.stripeEnabled}
+        razorpayEnabled={config.razorpayEnabled}
         currentPlan={user.plan || "free"}
         plans={Object.values(PLANS)}
       />

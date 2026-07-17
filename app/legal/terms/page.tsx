@@ -1,16 +1,14 @@
-import Link from "next/link";
+import { MarketingShell } from "@/components/MarketingShell";
 
 export default function TermsPage() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed">
-      <Link href="/" className="text-violet-600">
-        ← NoCodeGit
-      </Link>
-      <h1 className="mt-6 text-2xl font-bold">Terms of Service</h1>
-      <p className="mt-2 text-xs text-[var(--faint)]">
-        Template — legal review required. Site: nocodegit.tech
-      </p>
-      <div className="mt-6 space-y-4 text-[var(--muted)]">
+    <MarketingShell
+      heroImage="/images/hero-studio.jpg"
+      eyebrow="Legal"
+      title="Terms of Service"
+      subtitle="Template — legal review required. Site: nocodegit.tech"
+    >
+      <div className="space-y-4 text-sm leading-relaxed text-[var(--muted)]">
         <p>
           You retain ownership of your code. You grant NoCodeGit a limited
           license to store snapshots and transmit packages to providers you
@@ -35,6 +33,6 @@ export default function TermsPage() {
         </p>
         <p>Service provided “as is” to the extent permitted by law.</p>
       </div>
-    </div>
+    </MarketingShell>
   );
 }

@@ -39,13 +39,13 @@ export async function POST(req: Request) {
       await sendPasswordResetEmail(user.email, resetUrl);
     } catch (e) {
       console.error("[password-reset email failed]", e);
-      // Still return generic; include dev URL when not SendGrid
+      // Still return generic; include dev URL when email provider is not configured
       if (process.env.NODE_ENV === "development" || !config.emailEnabled) {
         return json({
           ...generic,
           reset_url: resetUrl,
           warning:
-            "Email not sent via SendGrid (missing SENDGRID_API_KEY or send failed). Use reset_url in development.",
+            "Email not sent via Resend (missing RESEND_API_KEY or send failed). Use reset_url in development.",
         });
       }
       return error("Could not send email. Try again later.", 502);

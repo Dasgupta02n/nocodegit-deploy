@@ -82,28 +82,60 @@ export const config = {
   maxProjectsFree: 3,
   maxProjectsPaid: 100,
   bcryptRounds: 12,
+  get razorpayKeyId() {
+    return env("RAZORPAY_KEY_ID", "NEXT_PUBLIC_RAZORPAY_KEY_ID") || "";
+  },
+  get razorpayKeySecret() {
+    return env("RAZORPAY_KEY_SECRET") || "";
+  },
+  get razorpayWebhookSecret() {
+    return env("RAZORPAY_WEBHOOK_SECRET") || "";
+  },
+  /** Plan id from Razorpay Dashboard (Subscriptions → Plans) for Pro */
+  get razorpayPlanPro() {
+    return env("RAZORPAY_PLAN_PRO") || "";
+  },
+  get razorpayEnabled() {
+    return Boolean(
+      config.razorpayKeyId &&
+        config.razorpayKeySecret &&
+        config.razorpayPlanPro
+    );
+  },
+  /** @deprecated Stripe removed — use razorpay* */
+  get stripeEnabled() {
+    return config.razorpayEnabled;
+  },
   get stripeSecret() {
-    return env("STRIPE_SECRET_KEY") || "";
+    return "";
   },
   get stripeWebhookSecret() {
-    return env("STRIPE_WEBHOOK_SECRET") || "";
+    return "";
   },
   get stripePricePro() {
-    return env("STRIPE_PRICE_PRO", "STRIPE_PRICE_SOLO") || "";
+    return "";
   },
-  get stripeEnabled() {
-    return Boolean(config.stripeSecret && config.stripePricePro);
+  get resendApiKey() {
+    return env("RESEND_API_KEY") || "";
   },
+  /** @deprecated Use resendApiKey — kept so old SENDGRID_API_KEY env still enables email briefly */
   get sendgridApiKey() {
     return env("SENDGRID_API_KEY") || "";
   },
   get emailFrom() {
     return (
-      env("EMAIL_FROM", "SENDGRID_FROM") || BRAND.emailFromDefault
+      env("EMAIL_FROM", "RESEND_FROM", "SENDGRID_FROM") ||
+      BRAND.emailFromDefault
     );
   },
   get emailEnabled() {
-    return Boolean(config.sendgridApiKey);
+    return Boolean(config.resendApiKey);
+  },
+  get s3Enabled() {
+    return Boolean(
+      process.env.S3_BUCKET &&
+        (process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID)
+    );
   },
 };
 

@@ -16,13 +16,13 @@ export default async function SettingsPage() {
         </Link>
         <span> / Settings</span>
       </div>
-      <h1 className="text-2xl font-semibold">Account settings</h1>
-      <p className="mt-1 text-sm text-[var(--muted)]">
-        Tray agent tokens and account plan (
-        <Link href="/app/billing" className="text-[var(--teal)]">
+      <p className="section-eyebrow">Settings</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight">General</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        Tray agent tokens ·{" "}
+        <Link href="/app/billing" className="text-[var(--teal)] hover:underline">
           Billing
         </Link>
-        ).
       </p>
       <AgentTokenClient />
     </AppShell>

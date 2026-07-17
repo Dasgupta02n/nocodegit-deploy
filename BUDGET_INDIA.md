@@ -13,13 +13,13 @@ Shared Node host or small VPS. SQLite + disk snapshots — no fleet for user app
 | Domain | nocodegit.tech |
 | Host | Hostinger / VPS with Node 20+ |
 | DB | SQLite file — ₹0 (OSS, not SaaS free tier) |
-| Email | SendGrid API |
+| Email | Resend API |
 
 ## Env (production)
 
 ```
 NOCODEGIT_SECRET=...
 NEXT_PUBLIC_APP_URL=https://nocodegit.tech
-SENDGRID_API_KEY=SG....
+RESEND_API_KEY=re_...
 EMAIL_FROM=NoCodeGit <noreply@nocodegit.tech>
 ```

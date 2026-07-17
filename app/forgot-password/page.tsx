@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -29,12 +30,11 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-lg font-semibold">
-        NoCodeGit
-      </Link>
-      <h1 className="text-2xl font-semibold">Reset password</h1>
-      <form onSubmit={onSubmit} className="card mt-6 space-y-4 p-6">
+    <AuthLayout
+      title="Reset password"
+      subtitle="We’ll email a secure link if that address has an account."
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="label">Email</label>
           <input
@@ -55,9 +55,12 @@ export default function ForgotPasswordPage() {
           </p>
         )}
       </form>
-      <Link href="/login" className="mt-6 text-center text-sm text-[var(--teal)]">
+      <Link
+        href="/login"
+        className="mt-6 block text-center text-sm text-[var(--teal)]"
+      >
         Back to login
       </Link>
-    </div>
+    </AuthLayout>
   );
 }

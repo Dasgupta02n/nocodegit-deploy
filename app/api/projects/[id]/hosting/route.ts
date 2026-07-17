@@ -40,9 +40,18 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 const schema = z.object({
-  provider: z.enum(["hook", "vercel", "netlify", "sftp"]),
+  provider: z.enum([
+    "hook",
+    "vercel",
+    "netlify",
+    "sftp",
+    "railway",
+    "render",
+    "cloudflare",
+    "custom",
+  ]),
   display_name: z.string().max(80).optional(),
-  credentials: z.string().min(1),
+  credentials: z.string().optional().default(""),
   target_json: z.string().default("{}"),
   test: z.boolean().optional(),
 });
@@ -54,18 +63,32 @@ export async function PUT(req: Request, ctx: Ctx) {
   if (!getProjectForUser(id, user.id)) return error("Not found", 404);
   try {
     const body = schema.parse(await req.json());
+    const existing = getDb()
+      .prepare(
+        "SELECT credentials_enc FROM hosting_connections WHERE project_id = ?"
+      )
+      .get(id) as { credentials_enc: string } | undefined;
+    if (!body.credentials && !existing) {
+      return error("Credentials required for new hosting connection");
+    }
+    const { decrypt } = await import("@/lib/crypto");
+    const plainCreds =
+      body.credentials ||
+      (existing ? decrypt(existing.credentials_enc) : "");
     let last_test_status: string | null = null;
     let last_test_message: string | null = null;
     if (body.test !== false) {
       const t = await testHostingConnection(
         body.provider,
-        body.credentials,
+        plainCreds,
         body.target_json
       );
       last_test_status = t.ok ? "ok" : "fail";
       last_test_message = t.message;
     }
-    const enc = encrypt(body.credentials);
+    const enc = body.credentials
+      ? encrypt(body.credentials)
+      : existing!.credentials_enc;
     getDb()
       .prepare(
         `INSERT INTO hosting_connections (project_id, provider, display_name, credentials_enc, target_json, last_test_status, last_test_message, updated_at)

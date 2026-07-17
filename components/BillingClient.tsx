@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 
 type Plan = {
   id: string;
@@ -13,21 +14,35 @@ type Plan = {
   features: readonly string[];
 };
 
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, cb: (resp: unknown) => void) => void;
+    };
+  }
+}
+
 export function BillingClient({
-  stripeEnabled,
+  razorpayEnabled,
   currentPlan,
   plans,
 }: {
-  stripeEnabled: boolean;
+  razorpayEnabled: boolean;
+  /** @deprecated alias */
+  stripeEnabled?: boolean;
   currentPlan: string;
   plans: Plan[];
 }) {
+  const enabled = razorpayEnabled;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
 
   async function checkout() {
     setBusy(true);
     setErr("");
+    setMsg("");
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -36,7 +51,28 @@ export function BillingClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Checkout failed");
-      if (data.url) window.location.href = data.url;
+
+      if (!window.Razorpay) {
+        throw new Error("Razorpay Checkout script not loaded yet. Try again.");
+      }
+
+      const rzp = new window.Razorpay({
+        key: data.key,
+        subscription_id: data.subscription_id,
+        name: data.name || "NoCodeGit",
+        description: data.description || "Pro plan",
+        prefill: data.prefill || {},
+        theme: { color: "#2F6F6B" },
+        handler: function () {
+          setMsg("Payment received. Plan activates when Razorpay confirms (webhook).");
+          window.location.href = "/app/billing?success=1";
+        },
+      });
+      rzp.on("payment.failed", (resp: unknown) => {
+        console.error(resp);
+        setErr("Payment failed or was cancelled.");
+      });
+      rzp.open();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -44,14 +80,16 @@ export function BillingClient({
     }
   }
 
-  async function portal() {
+  async function cancelSub() {
+    if (!confirm("Cancel Pro subscription?")) return;
     setBusy(true);
     setErr("");
     try {
       const res = await fetch("/api/billing/portal", { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Portal failed");
-      if (data.url) window.location.href = data.url;
+      if (!res.ok) throw new Error(data.error || "Cancel failed");
+      setMsg(data.message || "Subscription canceled.");
+      window.location.reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -66,12 +104,13 @@ export function BillingClient({
 
   return (
     <div className="mt-8">
-      {!stripeEnabled && (
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      {!enabled && (
         <div className="card mb-6 p-4 text-sm text-[var(--muted)]">
-          Stripe is not configured yet. Add{" "}
-          <code className="text-[var(--ink)]">STRIPE_SECRET_KEY</code> and{" "}
-          <code className="text-[var(--ink)]">STRIPE_PRICE_PRO</code> (and
-          webhook secret) for $5/mo Pro. Free plan works without Stripe.
+          Razorpay is not configured yet. Free plan works without it. Set{" "}
+          <code className="text-[var(--ink)]">RAZORPAY_KEY_ID</code>,{" "}
+          <code className="text-[var(--ink)]">RAZORPAY_KEY_SECRET</code>, and{" "}
+          <code className="text-[var(--ink)]">RAZORPAY_PLAN_PRO</code>.
         </div>
       )}
       {err && (
@@ -79,59 +118,62 @@ export function BillingClient({
           {err}
         </p>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {plans.map((p) => (
-          <div
-            key={p.id}
-            className={`card p-6 ${
-              (p.id === "pro" && isPro) || (p.id === "free" && !isPro)
-                ? "border-[var(--teal)]"
-                : ""
-            }`}
-          >
-            <h2 className="text-lg font-semibold">{p.name}</h2>
-            <p className="mt-1 text-2xl font-semibold text-[var(--teal)]">
-              {p.priceLabel}
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
-              {p.features.map((f) => (
-                <li key={f}>· {f}</li>
-              ))}
-            </ul>
-            {p.id === "free" ? (
-              <p className="mt-6 text-xs text-[var(--faint)]">
-                {!isPro ? "Current plan" : "Included as fallback if you cancel"}
-              </p>
-            ) : (
-              <button
-                type="button"
-                className="btn-primary mt-6 w-full"
-                disabled={busy || !stripeEnabled || isPro}
-                onClick={checkout}
-              >
-                {isPro ? "Current plan" : "Upgrade to Pro — $5/mo"}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {stripeEnabled && isPro && (
-        <button
-          type="button"
-          className="btn-secondary mt-8"
-          disabled={busy}
-          onClick={portal}
-        >
-          Manage subscription (Stripe portal)
-        </button>
+      {msg && (
+        <p className="mb-4 rounded-xl bg-[var(--teal-soft)] px-4 py-3 text-sm text-[var(--teal)]">
+          {msg}
+        </p>
       )}
-      <p className="mt-6 text-xs text-[var(--faint)]">
-        Free users can deploy projects that already contain ad/affiliate code.
-        Only Pro can open the Ads & affiliates editor.{" "}
-        <Link href="/docs" className="text-[var(--teal)]">
-          Learn more
-        </Link>
-      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {plans.map((p) => {
+          const active =
+            (p.id === "pro" && isPro) || (p.id === "free" && !isPro);
+          return (
+            <div
+              key={p.id}
+              className={`card p-6 ${active ? "ring-2 ring-[var(--teal)]" : ""}`}
+            >
+              <div className="text-sm font-semibold text-[var(--teal)]">
+                {p.name}
+              </div>
+              <div className="mt-2 text-3xl font-semibold tracking-tight">
+                {p.priceLabel}
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+                {p.features.map((f) => (
+                  <li key={f}>· {f}</li>
+                ))}
+              </ul>
+              <div className="mt-6">
+                {p.id === "free" && (
+                  <Link href="/app" className="btn-secondary w-full">
+                    {active ? "Current plan" : "Use free"}
+                  </Link>
+                )}
+                {p.id === "pro" &&
+                  (isPro ? (
+                    <button
+                      type="button"
+                      className="btn-secondary w-full"
+                      disabled={busy || !enabled}
+                      onClick={() => void cancelSub()}
+                    >
+                      Cancel Pro
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary w-full"
+                      disabled={busy || !enabled}
+                      onClick={() => void checkout()}
+                    >
+                      Upgrade with Razorpay
+                    </button>
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

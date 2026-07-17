@@ -1,17 +1,14 @@
-import Link from "next/link";
+import { MarketingShell } from "@/components/MarketingShell";
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed">
-      <Link href="/" className="text-violet-600">
-        ← NoCodeGit
-      </Link>
-      <h1 className="mt-6 text-2xl font-bold">Privacy Policy</h1>
-      <p className="mt-2 text-xs text-[var(--faint)]">
-        Template — have counsel review before public launch (DPDP/GDPR as
-        applicable). Operator: nocodegit.tech
-      </p>
-      <div className="mt-6 space-y-4 text-[var(--muted)]">
+    <MarketingShell
+      heroImage="/images/feature-security.jpg"
+      eyebrow="Legal"
+      title="Privacy Policy"
+      subtitle="Template — have counsel review before public launch (DPDP/GDPR as applicable). Operator: nocodegit.tech"
+    >
+      <div className="space-y-4 text-sm leading-relaxed text-[var(--muted)]">
         <p>
           NoCodeGit (“we”) provides a control-plane service that stores project
           snapshots and orchestrates deploys to hosting accounts you connect.
@@ -20,7 +17,7 @@ export default function PrivacyPage() {
           <strong className="text-[var(--ink)]">Data:</strong> email, password
           hash, project metadata, code snapshots, hosting credentials
           (encrypted), env values (encrypted), snippets, deploy logs, agent
-          tokens, password-reset tokens, Stripe customer ids when billing is
+          tokens, password-reset tokens, Razorpay customer/subscription ids when billing is
           used.
         </p>
         <p>
@@ -37,6 +34,6 @@ export default function PrivacyPage() {
           correction, deletion via the operator contact published on the site.
         </p>
       </div>
-    </div>
+    </MarketingShell>
   );
 }

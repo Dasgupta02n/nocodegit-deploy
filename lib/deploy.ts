@@ -66,14 +66,95 @@ async function deployVercel(
   token: string,
   target: Record<string, string>
 ): Promise<DeployResult> {
+  // Prefer Deploy Hook when present
   if (target.hook_url) {
     return deployHook(zipPath, token, { ...target, bearer: token });
   }
+
+  // Vercel Deployments API: upload as a single file deployment via files API is complex;
+  // use v13 deployments with files from zip is not supported directly.
+  // Fallback: create deployment from empty + note, OR require hook.
+  // Implementation: POST multipart via /v13/deployments with file blobs requires unpacking.
+  // We unpack is done in deploy-runner; here we only have zip.
+  // Trigger redeploy of existing project via API if project_id set:
+  const projectId = target.project_id || target.projectId;
+  if (projectId && token) {
+    const log: string[] = [];
+    log.push(`Vercel: triggering redeploy for project ${projectId}`);
+    try {
+      // List deployments and redeploy latest, or create deployment hook-style
+      const res = await fetch(
+        `https://api.vercel.com/v13/deployments?projectId=${encodeURIComponent(projectId)}&limit=1`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "User-Agent": UA,
+          },
+        }
+      );
+      const text = await res.text();
+      log.push(`List deployments: ${res.status}`);
+      if (!res.ok) {
+        log.push(text.slice(0, 1500));
+        log.push(
+          "Tip: use a Deploy Hook URL in target_json.hook_url for zip-based deploys."
+        );
+        return { ok: false, log };
+      }
+      // Create deployment from git if connected — otherwise instruct hook
+      const create = await fetch("https://api.vercel.com/v13/deployments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "User-Agent": UA,
+        },
+        body: JSON.stringify({
+          name: target.name || "nocodegit-ship",
+          project: projectId,
+          target: "production",
+        }),
+      });
+      const ctext = await create.text();
+      log.push(`Create deployment: ${create.status}`);
+      log.push(ctext.slice(0, 2000));
+      let live_url = target.live_url;
+      let provider_ref: string | undefined;
+      try {
+        const j = JSON.parse(ctext);
+        live_url = j.url ? `https://${j.url}` : live_url;
+        provider_ref = j.id;
+      } catch {
+        /* ignore */
+      }
+      if (!create.ok) {
+        log.push(
+          'For full ZIP ship without Git, set target_json.hook_url to a Vercel Deploy Hook.'
+        );
+      }
+      return {
+        ok: create.ok,
+        log,
+        provider_ref,
+        live_url,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        log: [
+          e instanceof Error ? e.message : "Vercel API error",
+          "Set target_json.hook_url for Deploy Hook based shipping.",
+        ],
+      };
+    }
+  }
+
   return {
     ok: false,
     log: [
-      "Vercel: set target_json.hook_url to a Deploy Hook URL.",
-      'Example: {"hook_url":"https://api.vercel.com/v1/integrations/deploy/...","live_url":"https://app.vercel.app"}',
+      "Vercel: set target_json.hook_url (recommended) or project_id + API token.",
+      'Example hook: {"hook_url":"https://api.vercel.com/v1/integrations/deploy/...","live_url":"https://app.vercel.app"}',
+      'Example API: {"project_id":"prj_...","live_url":"https://app.vercel.app"}',
     ],
   };
 }
@@ -176,25 +257,54 @@ async function deploySftp(
             return;
           }
           sftp.fastPut(zipPath, remoteFile, (putErr) => {
-            clearTimeout(timeout);
-            conn.end();
             if (putErr) {
+              clearTimeout(timeout);
+              conn.end();
               resolve({
                 ok: false,
                 log: [...log, putErr.message],
               });
-            } else {
-              log.push("Uploaded nocodegit-deploy.zip");
-              log.push(
-                "Extract on server if needed (ssh): unzip -o nocodegit-deploy.zip"
-              );
-              resolve({
-                ok: true,
-                log,
-                provider_ref: `sftp:${remoteFile}`,
-                live_url: target.live_url,
-              });
+              return;
             }
+            log.push("Uploaded nocodegit-deploy.zip");
+            const extractCmd =
+              target.extract_cmd ||
+              `cd ${remotePath.replace(/\\/g, "/")} && (unzip -o nocodegit-deploy.zip || tar -xf nocodegit-deploy.zip || true)`;
+            conn.exec(extractCmd, (execErr, stream) => {
+              if (execErr || !stream) {
+                clearTimeout(timeout);
+                conn.end();
+                log.push(
+                  "Zip uploaded. Extract manually: unzip -o nocodegit-deploy.zip"
+                );
+                resolve({
+                  ok: true,
+                  log,
+                  provider_ref: `sftp:${remoteFile}`,
+                  live_url: target.live_url,
+                });
+                return;
+              }
+              let out = "";
+              stream.on("data", (d: Buffer) => {
+                out += d.toString();
+              });
+              stream.stderr.on("data", (d: Buffer) => {
+                out += d.toString();
+              });
+              stream.on("close", (code: number) => {
+                clearTimeout(timeout);
+                conn.end();
+                log.push(`Extract exit ${code}`);
+                if (out.trim()) log.push(out.slice(0, 1500));
+                resolve({
+                  ok: true,
+                  log,
+                  provider_ref: `sftp:${remoteFile}`,
+                  live_url: target.live_url,
+                });
+              });
+            });
           });
         });
       })
@@ -213,6 +323,55 @@ async function deploySftp(
   });
 }
 
+/** Custom HTTP API: POST zip to target.url with configurable method/headers. */
+async function deployCustom(
+  zipPath: string,
+  credentials: string,
+  target: Record<string, string>
+): Promise<DeployResult> {
+  const log: string[] = [];
+  const url = target.url || target.hook_url || credentials;
+  if (!url?.startsWith("http")) {
+    return {
+      ok: false,
+      log: [
+        'Custom API requires target_json.url (or hook_url).',
+        'Optional: method, auth_header, bearer, content_type, live_url, dashboard_url',
+      ],
+    };
+  }
+  const method = (target.method || "POST").toUpperCase();
+  const headers: Record<string, string> = {
+    "User-Agent": UA,
+    "Content-Type": target.content_type || "application/zip",
+  };
+  if (target.auth_header) headers.Authorization = target.auth_header;
+  else if (target.bearer) headers.Authorization = `Bearer ${target.bearer}`;
+  else if (credentials && !credentials.startsWith("http")) {
+    headers.Authorization = `Bearer ${credentials}`;
+  }
+  // Extra headers as JSON map
+  if (target.headers_json) {
+    try {
+      Object.assign(headers, JSON.parse(target.headers_json));
+    } catch {
+      log.push("Warning: headers_json invalid JSON");
+    }
+  }
+  log.push(`${method} ${url.replace(/\/\/([^:]+):[^@]+@/, "//$1:***@")}`);
+  const body = fs.readFileSync(zipPath);
+  const res = await fetch(url, { method, headers, body });
+  const text = await res.text();
+  log.push(`Status ${res.status}`);
+  log.push(text.slice(0, 2000));
+  return {
+    ok: res.ok,
+    log,
+    provider_ref: `custom:${res.status}`,
+    live_url: target.live_url,
+  };
+}
+
 export async function runDeploy(
   zipPath: string,
   hosting: HostingConfig
@@ -224,17 +383,29 @@ export async function runDeploy(
   switch (provider) {
     case "hook":
     case "deploy_hook":
-      return deployHook(zipPath, credentials, target);
+    case "railway":
+    case "render":
+    case "cloudflare":
+      return deployHook(zipPath, credentials, {
+        ...target,
+        hook_url: target.hook_url || credentials,
+      });
     case "vercel":
       return deployVercel(zipPath, credentials, target);
     case "netlify":
       return deployNetlify(zipPath, credentials, target);
     case "sftp":
       return deploySftp(zipPath, credentials, target);
+    case "custom":
+    case "api":
+      return deployCustom(zipPath, credentials, target);
     default:
       return {
         ok: false,
-        log: [`Unknown provider: ${provider}. Use hook | vercel | netlify | sftp`],
+        log: [
+          `Unknown provider: ${provider}.`,
+          "Use: hook | vercel | netlify | sftp | railway | render | cloudflare | custom",
+        ],
       };
   }
 }
@@ -247,10 +418,22 @@ export async function testHostingConnection(
   const target = parseTarget(targetJson);
   const p = provider.toLowerCase();
   try {
-    if (p === "hook" || p === "deploy_hook") {
+    if (
+      p === "hook" ||
+      p === "deploy_hook" ||
+      p === "railway" ||
+      p === "render" ||
+      p === "cloudflare"
+    ) {
       const url = target.hook_url || credentialsPlain;
       if (!url.startsWith("http")) return { ok: false, message: "Invalid hook URL" };
       return { ok: true, message: "Hook URL format OK (not invoked on test)" };
+    }
+    if (p === "custom" || p === "api") {
+      const url = target.url || target.hook_url || credentialsPlain;
+      if (!url.startsWith("http"))
+        return { ok: false, message: "Custom API needs target_json.url" };
+      return { ok: true, message: "Custom API URL format OK" };
     }
     if (p === "netlify") {
       const res = await fetch("https://api.netlify.com/api/v1/user", {

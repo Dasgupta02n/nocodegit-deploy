@@ -1,23 +1,44 @@
-import Stripe from "stripe";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 import { config, isPaidPlan } from "./config";
 
-let stripe: Stripe | null = null;
+let client: Razorpay | null = null;
 
-export function getStripe(): Stripe | null {
-  if (!config.stripeSecret) return null;
-  if (!stripe) {
-    stripe = new Stripe(config.stripeSecret, {
-      typescript: true,
+export function getRazorpay(): Razorpay | null {
+  if (!config.razorpayKeyId || !config.razorpayKeySecret) return null;
+  if (!client) {
+    client = new Razorpay({
+      key_id: config.razorpayKeyId,
+      key_secret: config.razorpayKeySecret,
     });
   }
-  return stripe;
+  return client;
+}
+
+export function verifyRazorpayWebhookSignature(
+  rawBody: string,
+  signature: string | null
+): boolean {
+  if (!config.razorpayWebhookSecret || !signature) return false;
+  const expected = crypto
+    .createHmac("sha256", config.razorpayWebhookSecret)
+    .update(rawBody)
+    .digest("hex");
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expected),
+      Buffer.from(signature)
+    );
+  } catch {
+    return false;
+  }
 }
 
 export const PLANS = {
   free: {
     id: "free",
     name: "Free",
-    priceLabel: "$0",
+    priceLabel: "₹0",
     priceUsd: 0,
     projects: config.maxProjectsFree,
     maxUpload: "300 MB",
@@ -33,7 +54,7 @@ export const PLANS = {
   pro: {
     id: "pro",
     name: "Pro",
-    priceLabel: "$5/mo",
+    priceLabel: "₹399/mo",
     priceUsd: 5,
     projects: config.maxProjectsPaid,
     maxUpload: "Unlimited",

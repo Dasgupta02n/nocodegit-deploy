@@ -8,7 +8,7 @@ import { execSync } from "child_process";
 import { v4 as uuid } from "uuid";
 import { getDb } from "./db";
 import { getProjectForUser } from "./projects";
-import { readSnapshot } from "./storage";
+import { readSnapshot, readSnapshotAsync } from "./storage";
 import { applySnippets } from "./snippets-apply";
 import { runDeploy, type HostingConfig } from "./deploy";
 import { pushEnvToHost } from "./env-push";
@@ -70,21 +70,36 @@ export async function executeProjectDeploy(
 
   const deployId = uuid();
   const logs: string[] = [];
+  const persistLog = (line?: string) => {
+    if (line) logs.push(line);
+    try {
+      getDb()
+        .prepare(`UPDATE deploys SET log = ?, status = 'running' WHERE id = ?`)
+        .run(logs.join("\n"), deployId);
+    } catch {
+      /* ignore */
+    }
+  };
+
   getDb()
     .prepare(
-      `INSERT INTO deploys (id, project_id, save_id, status, log) VALUES (?, ?, ?, 'running', '')`
+      `INSERT INTO deploys (id, project_id, save_id, status, log) VALUES (?, ?, ?, 'running', 'Queued…')`
     )
     .run(deployId, projectId, resolvedSave);
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ncg-deploy-"));
   try {
-    const zipBuf = readSnapshot(projectId, resolvedSave);
+    persistLog("1/6 Loading snapshot…");
+    const zipBuf = await readSnapshotAsync(projectId, resolvedSave).catch(() =>
+      readSnapshot(projectId, resolvedSave)
+    );
     const zipPath = path.join(tmp, "source.zip");
     fs.writeFileSync(zipPath, zipBuf);
     const extractDir = path.join(tmp, "src");
     fs.mkdirSync(extractDir);
+    persistLog("2/6 Extracting package…");
     extractZip(zipPath, extractDir);
-    logs.push("Extracted snapshot");
+    persistLog("Extracted snapshot");
 
     const snippets = getDb()
       .prepare("SELECT * FROM snippets WHERE project_id = ?")
@@ -105,6 +120,7 @@ export async function executeProjectDeploy(
       enabled: number;
     }>;
 
+    persistLog("3/6 Applying snippets & affiliates…");
     const applied = applySnippets(
       extractDir,
       snippets.map((s) => ({
@@ -122,7 +138,7 @@ export async function executeProjectDeploy(
         enabled: !!a.enabled,
       }))
     );
-    logs.push(...applied.log);
+    for (const line of applied.log) persistLog(line);
 
     for (const [slug, content] of Object.entries(applied.appliedSnippets)) {
       getDb()
@@ -158,8 +174,9 @@ export async function executeProjectDeploy(
     }
 
     const outZip = path.join(tmp, "out.zip");
+    persistLog("4/6 Packaging artifact…");
     makeZip(extractDir, outZip);
-    logs.push("Packaged deploy artifact");
+    persistLog("Packaged deploy artifact");
 
     // Push env to host when possible
     const envRows = getDb()
@@ -171,16 +188,18 @@ export async function executeProjectDeploy(
       value_enc: string;
       visibility: string;
     }>;
+    persistLog("5/6 Pushing environment to host…");
     const envLog = await pushEnvToHost(
       hosting.provider,
       hosting.credentials_enc,
       hosting.target_json,
       envRows
     );
-    logs.push(...envLog);
+    for (const line of envLog) persistLog(line);
 
+    persistLog("6/6 Uploading to your host…");
     const result = await runDeploy(outZip, hosting);
-    logs.push(...result.log);
+    for (const line of result.log) persistLog(line);
 
     const status = result.ok ? "success" : "failed";
     const live = result.live_url || project.live_url || null;

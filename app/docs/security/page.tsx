@@ -1,13 +1,15 @@
 import Link from "next/link";
+import { MarketingShell } from "@/components/MarketingShell";
 
 export default function SecurityDoc() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed">
-      <Link href="/docs" className="text-violet-600">
-        ← Docs
-      </Link>
-      <h1 className="mt-6 text-2xl font-bold">Security</h1>
-      <ul className="mt-6 list-disc space-y-2 pl-5 text-[var(--muted)]">
+    <MarketingShell
+      heroImage="/images/feature-security.jpg"
+      eyebrow="Security"
+      title="Built for quiet confidence."
+      subtitle="Encryption, rate limits, and a hard line: we never execute your app."
+    >
+      <ul className="list-disc space-y-3 pl-5 text-[var(--muted)]">
         <li>
           <strong className="text-[var(--ink)]">NOCODEGIT_SECRET</strong> — long
           random string; derives session JWT + AES key material.
@@ -16,8 +18,9 @@ export default function SecurityDoc() {
         <li>Host tokens & env values: AES-256-GCM at rest</li>
         <li>Rate limits: login, signup, forgot/reset, deploy</li>
         <li>
-          Password reset via <strong>SendGrid</strong> when{" "}
-          <code>SENDGRID_API_KEY</code> is set
+          Password reset via <strong className="text-[var(--ink)]">Resend</strong>{" "}
+          when <code className="rounded bg-[var(--paper)] px-1">RESEND_API_KEY</code>{" "}
+          is set
         </li>
         <li>Security headers: X-Frame-Options, nosniff, referrer</li>
         <li>
@@ -25,10 +28,17 @@ export default function SecurityDoc() {
         </li>
         <li>No execution of user apps on NoCodeGit servers</li>
         <li>
-          Back up <code>data/nocodegit.sqlite</code> +{" "}
-          <code>data/snapshots</code> regularly
+          Back up <code className="rounded bg-[var(--paper)] px-1">data/nocodegit.sqlite</code>{" "}
+          + <code className="rounded bg-[var(--paper)] px-1">data/snapshots</code>{" "}
+          regularly
         </li>
       </ul>
-    </div>
+      <Link
+        href="/docs"
+        className="mt-8 inline-flex text-sm font-semibold text-violet-700 hover:underline"
+      >
+        ← All documentation
+      </Link>
+    </MarketingShell>
   );
 }

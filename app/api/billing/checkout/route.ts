@@ -1,54 +1,77 @@
 import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { config } from "@/lib/config";
-import { getStripe } from "@/lib/stripe";
+import { getRazorpay } from "@/lib/razorpay";
 import { error, json, unauthorized } from "@/lib/api";
 
-/** Checkout for Pro — $5/mo */
+/**
+ * Create a Razorpay Subscription for Pro.
+ * Client opens Checkout with subscription_id + key_id.
+ */
 export async function POST() {
   const user = await getSessionUser();
   if (!user) return unauthorized();
-  const stripe = getStripe();
-  if (!stripe || !config.stripeEnabled) {
+  const rzp = getRazorpay();
+  if (!rzp || !config.razorpayEnabled) {
     return error(
-      "Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO.",
+      "Razorpay is not configured. Set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_PLAN_PRO.",
       503
     );
   }
 
   try {
-    const priceId = config.stripePricePro;
-    if (!priceId) return error("Missing STRIPE_PRICE_PRO", 500);
-
-    let customerId = user.stripe_customer_id;
+    const planId = config.razorpayPlanPro;
+    let customerId = user.razorpay_customer_id;
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const customer = (await (rzp as any).customers.create({
+        name: user.name || user.email.split("@")[0],
         email: user.email,
-        metadata: { ncg_user_id: user.id },
-      });
+        fail_existing: 0,
+        notes: { ncg_user_id: user.id },
+      })) as { id: string };
       customerId = customer.id;
       getDb()
         .prepare(
-          `UPDATE users SET stripe_customer_id = ?, updated_at = datetime('now') WHERE id = ?`
+          `UPDATE users SET razorpay_customer_id = ?, updated_at = datetime('now') WHERE id = ?`
         )
         .run(customerId, user.id);
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${config.appUrl}/app/billing?success=1`,
-      cancel_url: `${config.appUrl}/app/billing?canceled=1`,
-      metadata: { ncg_user_id: user.id, plan: "pro" },
-      subscription_data: {
-        metadata: { ncg_user_id: user.id, plan: "pro" },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscription = (await (rzp as any).subscriptions.create({
+      plan_id: planId,
+      customer_notify: 1,
+      total_count: 120,
+      notes: {
+        ncg_user_id: user.id,
+        plan: "pro",
       },
-    });
+    })) as { id: string; status: string };
 
-    return json({ url: session.url });
+    getDb()
+      .prepare(
+        `UPDATE users SET razorpay_subscription_id = ?, updated_at = datetime('now') WHERE id = ?`
+      )
+      .run(subscription.id, user.id);
+
+    return json({
+      key: config.razorpayKeyId,
+      subscription_id: subscription.id,
+      customer_id: customerId,
+      name: "NoCodeGit Pro",
+      description: "Pro · unlimited saves + ads editor",
+      prefill: {
+        name: user.name || "",
+        email: user.email,
+      },
+      callback_url: `${config.appUrl}/app/billing?success=1`,
+    });
   } catch (e) {
     console.error(e);
-    return error("Checkout failed", 500);
+    return error(
+      e instanceof Error ? e.message : "Checkout failed",
+      500
+    );
   }
 }

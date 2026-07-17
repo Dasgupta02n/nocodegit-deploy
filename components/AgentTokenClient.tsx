@@ -48,16 +48,16 @@ export function AgentTokenClient() {
 
   return (
     <div className="card mt-8 space-y-4 p-6">
-      <h2 className="font-medium">Tray agent token</h2>
+      <h2 className="font-semibold">Tray agent token</h2>
       <p className="text-sm text-[var(--muted)]">
-        Create a token, paste it into the tray config (
-        <code>nocodegit-tray.json</code>) with your project id and API URL.
+        Create a token for the desktop tray (Save / Deploy / Report). Paste into
+        tray config with project id and API URL.
       </p>
       <button type="button" className="btn-primary" onClick={create}>
         Create token
       </button>
       {once && (
-        <div className="rounded-xl bg-[var(--teal-soft)] p-3 text-xs break-all">
+        <div className="rounded-xl bg-[var(--teal-soft)] p-3 text-xs break-all text-[var(--teal)]">
           <strong>Copy now:</strong> {once}
         </div>
       )}
@@ -82,16 +82,6 @@ export function AgentTokenClient() {
           </li>
         ))}
       </ul>
-      <pre className="overflow-x-auto rounded-xl bg-black/5 p-3 text-xs">
-{`// %APPDATA%/nocodegit-tray/nocodegit-tray.json  (Windows)
-{
-  "apiUrl": "https://nocodegit.tech",
-  "token": "ncg_...",
-  "projectId": "project-uuid-from-url",
-  "folderPath": "C:\\\\Users\\\\you\\\\project"
-}
-// Tray: Refresh projects → Select project → Save / Deploy`}
-      </pre>
     </div>
   );
 }

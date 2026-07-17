@@ -19,16 +19,39 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(user: { id: string; email: string }) {
+export async function createSession(
+  user: { id: string; email: string },
+  meta?: { userAgent?: string | null; ip?: string | null }
+) {
+  const jti = uuid();
   const token = await new SignJWT({ email: user.email } satisfies Omit<
     SessionPayload,
     "sub"
   >)
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
+    .setJti(jti)
     .setIssuedAt()
     .setExpirationTime(`${config.sessionDays}d`)
     .sign(secretKey());
+
+  try {
+    const { hashToken } = await import("./crypto");
+    getDb()
+      .prepare(
+        `INSERT INTO user_sessions (id, user_id, token_hash, user_agent, ip)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(
+        jti,
+        user.id,
+        hashToken(token),
+        meta?.userAgent || null,
+        meta?.ip || null
+      );
+  } catch (e) {
+    console.warn("[session record]", e);
+  }
 
   const jar = await cookies();
   jar.set(config.sessionCookie, token, {

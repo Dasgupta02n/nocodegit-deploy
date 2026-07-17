@@ -29,11 +29,49 @@ export async function POST(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   if (!getProjectForUser(id, user.id)) return error("Not found", 404);
 
-  let body: { save_id?: string } = {};
+  let body: { save_id?: string; async?: boolean } = {};
   try {
     body = await req.json();
   } catch {
     /* empty */
+  }
+
+  // Async mode: run deploy in background; client polls /deploys/:id
+  if (body.async) {
+    const outcomePromise = executeProjectDeploy(id, user.id, body.save_id);
+    // Wait until the "running" row exists (created at start of executeProjectDeploy)
+    let deployId: string | undefined;
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      const running = getDb()
+        .prepare(
+          `SELECT id FROM deploys WHERE project_id = ? AND status = 'running' ORDER BY created_at DESC LIMIT 1`
+        )
+        .get(id) as { id: string } | undefined;
+      if (running) {
+        deployId = running.id;
+        break;
+      }
+    }
+    void outcomePromise.catch(console.error);
+    if (deployId) {
+      return json({ deploy: { id: deployId, status: "running", async: true } });
+    }
+    try {
+      const outcome = await outcomePromise;
+      return json({
+        deploy: {
+          id: outcome.deployId,
+          status: outcome.status,
+          log: outcome.log,
+          live_url: outcome.live_url,
+          provider_ref: outcome.provider_ref,
+          async: false,
+        },
+      });
+    } catch (e) {
+      return error(e instanceof Error ? e.message : "Deploy failed", 400);
+    }
   }
 
   try {

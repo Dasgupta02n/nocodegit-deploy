@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AuthLayout } from "./AuthLayout";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -36,19 +37,15 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-lg font-semibold">
-        NoCodeGit
-      </Link>
-      <h1 className="text-2xl font-semibold">
-        {mode === "login" ? "Welcome back" : "Create your account"}
-      </h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">
-        {mode === "login"
+    <AuthLayout
+      title={mode === "login" ? "Welcome back" : "Create your account"}
+      subtitle={
+        mode === "login"
           ? "Sign in to your projects."
-          : "Start saving and shipping vibe projects."}
-      </p>
-      <form onSubmit={onSubmit} className="card mt-8 space-y-4 p-6">
+          : "Start free — 300 MB saves, your host."
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
         {mode === "signup" && (
           <div>
             <label className="label">Name</label>
@@ -91,7 +88,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </p>
         )}
         <button className="btn-primary w-full" disabled={loading} type="submit">
-          {loading ? "Please wait…" : mode === "login" ? "Log in" : "Sign up"}
+          {loading
+            ? "Please wait…"
+            : mode === "login"
+              ? "Log in"
+              : "Get started"}
         </button>
       </form>
       {mode === "login" && (
@@ -105,19 +106,19 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         {mode === "login" ? (
           <>
             No account?{" "}
-            <Link href="/signup" className="text-[var(--teal)]">
+            <Link href="/signup" className="font-semibold text-[var(--ink)]">
               Sign up
             </Link>
           </>
         ) : (
           <>
             Have an account?{" "}
-            <Link href="/login" className="text-[var(--teal)]">
+            <Link href="/login" className="font-semibold text-[var(--ink)]">
               Log in
             </Link>
           </>
         )}
       </p>
-    </div>
+    </AuthLayout>
   );
 }

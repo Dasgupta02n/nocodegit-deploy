@@ -1,16 +1,16 @@
-import sgMail from "@sendgrid/mail";
+import { Resend } from "resend";
 import { BRAND, config } from "./config";
 
-let configured = false;
+let client: Resend | null = null;
 
-function ensureSendGrid() {
-  if (!config.sendgridApiKey) {
-    throw new Error("SENDGRID_API_KEY is not set");
+function getResend(): Resend {
+  if (!config.resendApiKey) {
+    throw new Error("RESEND_API_KEY is not set");
   }
-  if (!configured) {
-    sgMail.setApiKey(config.sendgridApiKey);
-    configured = true;
+  if (!client) {
+    client = new Resend(config.resendApiKey);
   }
+  return client;
 }
 
 export type SendEmailInput = {
@@ -21,12 +21,12 @@ export type SendEmailInput = {
 };
 
 /**
- * Send transactional email via SendGrid.
- * If SENDGRID_API_KEY is missing, logs in development and throws in production for critical flows.
+ * Send transactional email via Resend.
+ * If RESEND_API_KEY is missing, logs in development and throws in production for critical flows.
  */
 export async function sendEmail(input: SendEmailInput): Promise<{
   ok: boolean;
-  mode: "sendgrid" | "log";
+  mode: "resend" | "log";
 }> {
   if (!config.emailEnabled) {
     console.info("[email:log-only]", {
@@ -37,15 +37,26 @@ export async function sendEmail(input: SendEmailInput): Promise<{
     return { ok: true, mode: "log" };
   }
 
-  ensureSendGrid();
-  await sgMail.send({
-    to: input.to,
+  const resend = getResend();
+  const { error } = await resend.emails.send({
     from: config.emailFrom,
+    to: input.to,
     subject: input.subject,
     text: input.text,
-    html: input.html || `<pre style="font-family:sans-serif">${escapeHtml(input.text)}</pre>`,
+    html:
+      input.html ||
+      `<pre style="font-family:sans-serif">${escapeHtml(input.text)}</pre>`,
   });
-  return { ok: true, mode: "sendgrid" };
+
+  if (error) {
+    throw new Error(
+      typeof error === "object" && error && "message" in error
+        ? String((error as { message: string }).message)
+        : "Resend send failed"
+    );
+  }
+
+  return { ok: true, mode: "resend" };
 }
 
 function escapeHtml(s: string) {
@@ -93,4 +104,21 @@ Get started: ${config.appUrl}/app
 — The ${BRAND.name} team`;
 
   await sendEmail({ to, subject, text });
+}
+
+export async function sendVerifyEmail(to: string, verifyUrl: string) {
+  const subject = `Verify your ${BRAND.name} email`;
+  const text = `Confirm your email for ${BRAND.name}:
+
+${verifyUrl}
+
+This link expires in 24 hours.`;
+  const html = `
+  <div style="font-family:Inter,system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#141414">
+    <h1 style="font-size:20px;color:#2F6F6B">${BRAND.name}</h1>
+    <p>Confirm your email to finish setup.</p>
+    <p><a href="${verifyUrl}" style="display:inline-block;background:#2F6F6B;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600">Verify email</a></p>
+    <p style="font-size:12px;color:#5C5A56">Or copy: ${verifyUrl}</p>
+  </div>`;
+  await sendEmail({ to, subject, text, html });
 }

@@ -31,14 +31,17 @@ export function NewProjectForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card flex flex-wrap gap-3 p-4">
-      <input
-        className="input max-w-sm flex-1"
-        placeholder="Project name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
+    <form onSubmit={onSubmit} className="card flex flex-wrap items-end gap-3 p-5">
+      <div className="min-w-[200px] flex-1">
+        <label className="label">Project name</label>
+        <input
+          className="input"
+          placeholder="e.g. atelier-landing"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
       <button className="btn-primary" disabled={loading} type="submit">
         {loading ? "Creating…" : "New project"}
       </button>

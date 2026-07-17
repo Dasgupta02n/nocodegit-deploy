@@ -21,8 +21,16 @@ export async function POST(req: Request) {
     if (!user || !(await verifyPassword(body.password, user.password_hash))) {
       return error("Invalid email or password", 401);
     }
-    await createSession(user);
-    return json({ id: user.id, email: user.email, name: user.name });
+    await createSession(user, {
+      userAgent: req.headers.get("user-agent"),
+      ip: clientIp(req),
+    });
+    return json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      email_verified: !!user.email_verified,
+    });
   } catch (e) {
     if (e instanceof z.ZodError) return error("Invalid input");
     return error("Login failed", 500);
