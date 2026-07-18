@@ -1,3 +1,5 @@
+# Hostinger VPS Docker Manager — NoCodeGit
+# Public mirror bootstrap (no private git / no docker build context required)
 services:
   nocodegit:
     image: node:20-bookworm
@@ -7,7 +9,7 @@ services:
     command:
       - bash
       - -lc
-      - "set -e; apt-get update -y; apt-get install -y --no-install-recommends python3 make g++ ca-certificates curl; rm -rf /tmp/nocodegit-deploy-main; curl -fsSL https://codeload.github.com/Dasgupta02n/nocodegit-deploy/tar.gz/refs/heads/main | tar -xz -C /tmp; find /app -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +; cp -a /tmp/nocodegit-deploy-main/. /app/; cd /app; rm -f next.config.ts; npm ci --include=dev --omit=optional; npm run build; exec npx next start -H 0.0.0.0 -p 3000"
+      - "set -e; if [ ! -f /app/.next/BUILD_ID ]; then apt-get update -y; apt-get install -y --no-install-recommends python3 make g++ ca-certificates curl; rm -rf /tmp/nocodegit-deploy-main; curl -fsSL https://codeload.github.com/Dasgupta02n/nocodegit-deploy/tar.gz/refs/heads/main | tar -xz -C /tmp; find /app -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +; cp -a /tmp/nocodegit-deploy-main/. /app/; cd /app; rm -f next.config.ts; npm ci --include=dev --omit=optional; npm run build; fi; cd /app; exec npx next start -H 0.0.0.0 -p 3000"
     expose:
       - "3000"
     environment:
@@ -28,6 +30,7 @@ services:
     volumes:
       - nocodegit_data:/app/data
       - nocodegit_app:/app
+
   caddy:
     image: caddy:2-alpine
     container_name: nocodegit-caddy
@@ -36,17 +39,15 @@ services:
       - "80:80"
       - "443:443"
     command:
-      - caddy
-      - reverse-proxy
-      - --from
-      - nocodegit.tech
-      - --to
-      - nocodegit:3000
+      - sh
+      - -lc
+      - "printf '%s\\n' 'nocodegit.tech, www.nocodegit.tech {' '  encode gzip' '  reverse_proxy nocodegit:3000' '}' > /tmp/Caddyfile; exec caddy run --config /tmp/Caddyfile --adapter caddyfile"
     depends_on:
       - nocodegit
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+
 volumes:
   nocodegit_data:
   nocodegit_app:
