@@ -1,8 +1,8 @@
 import { LandingPage } from "@/components/LandingPage";
 
-/** Public marketing home — never redirect to auth. */
+/** Marketing homepage (also rewritten from `/` via middleware). */
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default function MarketingHomePage() {
   return <LandingPage />;
 }
