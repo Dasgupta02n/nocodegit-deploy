@@ -1,14 +1,13 @@
-"use client";
-
 import Link from "next/link";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
 import { PierIcon } from "./BrandLogo";
 import { TrayDownloadBanner } from "./TrayDownloadBanner";
 
+/** Marketing homepage — server component so / always SSR the full landing. */
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[var(--paper)]">
+    <div className="min-h-screen bg-[var(--paper)]" data-page="landing">
       <SiteHeader />
 
       {/* Hero */}
