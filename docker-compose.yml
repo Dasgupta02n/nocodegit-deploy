@@ -9,7 +9,7 @@ services:
     command:
       - bash
       - -lc
-      - "set -e; if [ ! -f /app/.next/BUILD_ID ]; then apt-get update -y; apt-get install -y --no-install-recommends python3 make g++ ca-certificates curl; rm -rf /tmp/nocodegit-deploy-main; curl -fsSL https://codeload.github.com/Dasgupta02n/nocodegit-deploy/tar.gz/refs/heads/main | tar -xz -C /tmp; find /app -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +; cp -a /tmp/nocodegit-deploy-main/. /app/; cd /app; rm -f next.config.ts; npm ci --include=dev --omit=optional; npm run build; fi; cd /app; exec npx next start -H 0.0.0.0 -p 3000"
+      - "set -e; apt-get update -y; apt-get install -y --no-install-recommends python3 make g++ ca-certificates curl; rm -rf /tmp/nocodegit-deploy-main; curl -fsSL https://codeload.github.com/Dasgupta02n/nocodegit-deploy/tar.gz/refs/heads/main | tar -xz -C /tmp; find /app -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +; cp -a /tmp/nocodegit-deploy-main/. /app/; cd /app; rm -f next.config.ts; npm ci --include=dev --omit=optional; npm run build; exec npx next start -H 0.0.0.0 -p 3000"
     expose:
       - "3000"
     environment:
