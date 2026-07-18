@@ -43,6 +43,19 @@ body {
   letter-spacing: -0.03em;
 }
 
+.btn-lg {
+  padding: 0.85rem 1.5rem;
+  font-size: 0.9375rem;
+}
+
+/* Landing polish */
+[data-page="landing"] .site-nav {
+  max-width: 72rem;
+}
+[data-page="landing"] section {
+  scroll-margin-top: 5.5rem;
+}
+
 /* —— Buttons (Quay mockups) —— */
 .btn {
   @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition;
