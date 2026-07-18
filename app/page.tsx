@@ -1,6 +1,8 @@
-import { LandingPage } from "@/components/LandingPage";
+﻿import { LandingPage } from "@/components/LandingPage";
 
-/** Public marketing home — must not redirect to /signup. */
+/** Public marketing home — never redirect to auth. */
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return <LandingPage />;
 }
